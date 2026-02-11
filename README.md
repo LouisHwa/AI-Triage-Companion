@@ -4,8 +4,7 @@ npx expo start --tunnel
 
 pip install fastapi uvicorn google-genai python-dotenv Pillow python-multipart
 
-npx expo install @expo/vector-icons expo-image-picker
-npx expo install expo-av
+npx expo install @expo/vector-icons expo-image-picker expo-av
 
 uvicorn server:app --host 0.0.0.0 --port 8000 --reload
 
