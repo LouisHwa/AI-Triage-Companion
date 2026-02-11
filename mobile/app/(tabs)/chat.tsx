@@ -20,7 +20,7 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 
 // ⚠️ CHANGE TO YOUR IP
-const API_URL = "http://192.168.1.102:8000/chat";
+const API_URL = process.env.EXPO_PUBLIC_API_URL + "/chat";
 
 export default function ChatScreen() {
   const [messages, setMessages] = useState([
