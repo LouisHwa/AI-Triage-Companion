@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   TextInput,
@@ -10,45 +10,95 @@ import {
   ActivityIndicator,
   SafeAreaView,
   Alert,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import { Audio } from "expo-av"; // <--- NEW: Import Audio
 
-// Import your themed components for dark/light mode support
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 
-// ✅ YOUR UPDATED IP ADDRESS
-const API_URL = process.env.EXPO_PUBLIC_URL + "/chat";
+// ⚠️ CHANGE TO YOUR IP
+const API_URL = "http://192.168.1.102:8000/chat";
 
 export default function ChatScreen() {
   const [messages, setMessages] = useState([
-    { id: "1", text: "Hello! I am your AI assistant.", sender: "bot" },
+    {
+      id: "1",
+      text: "Hello! I can see and listen. How can I help?",
+      sender: "bot",
+    },
   ]);
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // --- FUNCTION: Send Message to Python Backend ---
-  const sendMessage = async () => {
-    if (!inputText.trim()) return;
+  // Audio Recording State
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
 
-    const userMessage = {
-      id: Date.now().toString(),
-      text: inputText,
-      sender: "user",
-    };
+  // --- PERMISSIONS ---
+  useEffect(() => {
+    (async () => {
+      await Audio.requestPermissionsAsync();
+      await ImagePicker.requestCameraPermissionsAsync();
+    })();
+  }, []);
 
-    // 1. Update UI immediately
-    setMessages((prev) => [...prev, userMessage]);
-    setInputText("");
+  // --- FUNCTION 1: MASTER SEND (Handles Text, Image, OR Audio) ---
+  const sendToBackend = async (
+    text: string | null,
+    imageUri: string | null,
+    audioUri: string | null,
+  ) => {
     setIsLoading(true);
 
+    // 1. Update UI with user message
+    const userMsgId = Date.now().toString();
+    const userMessage = {
+      id: userMsgId,
+      text: text || (audioUri ? "Sent an audio clip..." : "Sent an image..."),
+      sender: "user",
+      image: imageUri,
+    };
+    // @ts-ignore
+    setMessages((prev) => [...prev, userMessage]);
+    setInputText("");
+
+    // 2. Prepare Form Data
+    const formData = new FormData();
+
+    if (text) {
+      formData.append("message", text);
+    }
+
+    if (imageUri) {
+      // @ts-ignore
+      formData.append("file", {
+        uri: imageUri,
+        name: "photo.jpg",
+        type: "image/jpeg",
+      });
+    }
+
+    if (audioUri) {
+      // @ts-ignore
+      formData.append("audio", {
+        uri: audioUri,
+        name: "recording.m4a", // Ensure extension matches backend expectation
+        type: "audio/mp4",
+      });
+    }
+
+    // 3. Send
     try {
-      // 2. Send to Server
       const response = await fetch(API_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMessage.text }),
+        body: formData,
+        headers: {
+          Accept: "application/json",
+          // Do NOT set Content-Type here, let fetch handle boundary
+        },
       });
 
       const data = await response.json();
@@ -58,49 +108,80 @@ export default function ChatScreen() {
         text: data.reply,
         sender: "bot",
       };
+      // @ts-ignore
       setMessages((prev) => [...prev, botMessage]);
     } catch (error) {
-      Alert.alert(
-        "Connection Error",
-        "Could not reach 192.168.1.102. Make sure your Python server is running!",
-      );
+      Alert.alert("Error", "Server connection failed.");
       console.error(error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // --- FUNCTION: Open Camera ---
+  // --- FUNCTION 2: HANDLE CAMERA ---
   const openCamera = async () => {
-    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.5,
+    });
 
-    if (permissionResult.granted === false) {
-      Alert.alert(
-        "Permission Required",
-        "You've refused to allow this app to access your camera!",
-      );
-      return;
-    }
-
-    const result = await ImagePicker.launchCameraAsync();
     if (!result.canceled) {
-      // Logic to handle image would go here
-      console.log(result.assets[0].uri);
+      // Send immediately (Text is null, Audio is null)
+      sendToBackend(null, result.assets[0].uri, null);
     }
   };
 
-  // --- RENDER COMPONENT ---
-  const renderItem = ({
-    item,
-  }: {
-    item: { id: string; text: string; sender: string };
-  }) => (
+  // --- FUNCTION 3: HANDLE AUDIO RECORDING ---
+  const startRecording = async () => {
+    try {
+      console.log("Starting recording..");
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY,
+      );
+
+      setRecording(recording);
+      setIsRecording(true);
+    } catch (err) {
+      console.error("Failed to start recording", err);
+    }
+  };
+
+  const stopRecording = async () => {
+    console.log("Stopping recording..");
+    setRecording(null);
+    setIsRecording(false);
+
+    if (!recording) return;
+
+    await recording.stopAndUnloadAsync();
+    const uri = recording.getURI();
+    console.log("Recording stopped and stored at", uri);
+
+    // Send immediately (Text is null, Image is null)
+    if (uri) {
+      sendToBackend(null, null, uri);
+    }
+  };
+
+  // --- RENDER ---
+  const renderItem = ({ item }: { item: any }) => (
     <View
       style={[
         styles.messageBubble,
         item.sender === "user" ? styles.userBubble : styles.botBubble,
       ]}
     >
+      {item.image && (
+        <Image
+          source={{ uri: item.image }}
+          style={{ width: 200, height: 200, borderRadius: 10 }}
+        />
+      )}
       <ThemedText
         style={item.sender === "user" ? styles.userText : styles.botText}
       >
@@ -114,10 +195,8 @@ export default function ChatScreen() {
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
         <ThemedView style={styles.innerContainer}>
-          {/* 1. THE CHAT HISTORY */}
           <FlatList
             data={messages}
             renderItem={renderItem}
@@ -125,58 +204,63 @@ export default function ChatScreen() {
             contentContainerStyle={styles.chatList}
           />
 
-          {/* 2. LOADING SPINNER */}
-          {isLoading && (
-            <View style={styles.loader}>
-              <ActivityIndicator size="small" color="#0a7ea4" />
-            </View>
-          )}
+          {isLoading && <ActivityIndicator size="small" color="#0a7ea4" />}
 
-          {/* 3. THE INPUT BAR (Pill Shape) */}
+          {/* INPUT BAR */}
+          {/* INPUT BAR AREA */}
           <View style={styles.inputWrapper}>
+            {/* The Single "Pill" Container */}
             <View style={styles.inputContainer}>
-              {/* Camera Icon */}
-              <TouchableOpacity onPress={openCamera}>
-                <Ionicons
-                  name="camera-outline"
-                  size={24}
-                  color="black"
-                  style={styles.icon}
-                />
+              {/* 1. Camera Icon (Left) */}
+              <TouchableOpacity onPress={openCamera} style={styles.iconButton}>
+                <Ionicons name="camera-outline" size={26} color="black" />
               </TouchableOpacity>
 
-              {/* Text Input */}
+              {/* 2. Text Input (Middle) */}
               <TextInput
                 style={styles.textInput}
                 placeholder="Hi! What may i help you check with today?"
-                placeholderTextColor="#999"
+                placeholderTextColor="#ccc" // Light gray for placeholder
                 value={inputText}
                 onChangeText={setInputText}
-                onSubmitEditing={sendMessage}
+                editable={!isRecording}
+                multiline={false} // Keeps it single line like the image
               />
 
-              {/* Mic OR Send Icon */}
-              {inputText.length === 0 ? (
+              {/* 3. Mic OR Send Icon (Right) */}
+              {inputText.length > 0 ? (
                 <TouchableOpacity
-                  onPress={() => Alert.alert("Mic", "Recording logic here")}
+                  onPress={() => sendToBackend(inputText, null, null)}
+                  style={styles.iconButton}
                 >
                   <Ionicons
-                    name="mic-outline"
-                    size={24}
+                    name="arrow-forward-outline"
+                    size={26}
                     color="black"
-                    style={styles.icon}
                   />
                 </TouchableOpacity>
               ) : (
-                <TouchableOpacity onPress={sendMessage}>
+                <TouchableOpacity
+                  onPress={isRecording ? stopRecording : startRecording}
+                  style={styles.iconButton}
+                >
                   <Ionicons
-                    name="arrow-forward"
-                    size={24}
-                    color="#0a7ea4"
-                    style={styles.icon}
+                    name={isRecording ? "square" : "mic-outline"}
+                    size={26}
+                    color={isRecording ? "red" : "black"}
                   />
                 </TouchableOpacity>
               )}
+
+              {/* Optional: If you want the arrow to ALWAYS be there like your image, 
+                  you can just render the arrow next to the mic, but usually it's one or the other. 
+                  If you want EXACTLY your image (Mic AND Arrow), use this: 
+              */}
+              {/* <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                 <Ionicons name="mic-outline" size={26} color="black" style={{marginRight: 10}} />
+                 <Ionicons name="arrow-forward-outline" size={26} color="black" />
+               </View>
+               */}
             </View>
           </View>
         </ThemedView>
@@ -186,76 +270,56 @@ export default function ChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#fff", // Match this to your ThemedView background if needed
-  },
-  container: {
-    flex: 1,
-  },
-  innerContainer: {
-    flex: 1,
-    justifyContent: "space-between",
-  },
-  chatList: {
-    paddingHorizontal: 15,
-    paddingTop: 20,
-    paddingBottom: 10,
-  },
-  loader: {
-    padding: 10,
-    alignItems: "center",
-  },
-  // BUBBLE STYLES
+  safeArea: { flex: 1, backgroundColor: "#fff" },
+  container: { flex: 1 },
+  innerContainer: { flex: 1, justifyContent: "space-between" },
+  chatList: { padding: 15 },
   messageBubble: {
-    maxWidth: "80%",
-    padding: 12,
-    borderRadius: 20,
+    padding: 10,
+    borderRadius: 15,
     marginVertical: 5,
+    maxWidth: "80%",
   },
-  userBubble: {
-    alignSelf: "flex-end",
-    backgroundColor: "#0a7ea4",
-    borderBottomRightRadius: 4, // Little tail effect
-  },
-  botBubble: {
-    alignSelf: "flex-start",
-    backgroundColor: "#f0f0f0",
-    borderBottomLeftRadius: 4,
-  },
+  userBubble: { alignSelf: "flex-end", backgroundColor: "#0a7ea4" },
+  botBubble: { alignSelf: "flex-start", backgroundColor: "#f0f0f0" },
   userText: { color: "white" },
   botText: { color: "black" },
-
-  // INPUT BAR STYLES
   inputWrapper: {
     paddingHorizontal: 15,
-    paddingBottom: 10, // Padding from bottom of screen
-    paddingTop: 10,
-    backgroundColor: "transparent",
+    paddingVertical: 10,
+    backgroundColor: "#fff", // Or 'transparent' if you have a background image
   },
+
+  // This is the main "Pill"
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 12,
-    borderRadius: 30, // PILL SHAPE
-    backgroundColor: "white",
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-    // Shadows
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: "#fff",
+
+    // BORDER STYLING
+    borderWidth: 1.5, // Slightly thicker to match your image
+    borderColor: "#000", // Pure black border
+    borderRadius: 50, // High number makes it fully rounded (pill)
+
+    // PADDING INSIDE THE PILL
+    paddingHorizontal: 10,
+    paddingVertical: 5, // Small vertical padding to center items
+
+    // HEIGHT (Optional, but helps consistency)
+    minHeight: 50,
   },
+
   textInput: {
-    flex: 1,
-    height: 40,
-    fontSize: 15,
-    marginHorizontal: 10,
+    flex: 1, // Takes up all available middle space
+    fontSize: 16,
     color: "#000",
+    paddingHorizontal: 10, // Space between text and icons
+    height: "100%",
   },
-  icon: {
-    marginHorizontal: 5,
+
+  iconButton: {
+    padding: 5, // Increases touch area without changing look
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

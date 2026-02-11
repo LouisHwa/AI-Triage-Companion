@@ -2,9 +2,10 @@
 
 npx expo start --tunnel
 
-pip install fastapi uvicorn google-genai python-dotenv
+pip install fastapi uvicorn google-genai python-dotenv Pillow python-multipart
 
 npx expo install @expo/vector-icons expo-image-picker
+npx expo install expo-av
 
 uvicorn server:app --host 0.0.0.0 --port 8000 --reload
 
@@ -18,7 +19,11 @@ open cmd and
 
 # Server
 
-1. uvicorn server:app --host 0.0.0.0 --port 8000 --reload
+1. cd backend
+2. python -m venv .venv
+3. .venv\Scripts\activate.bat
+4. pip install
+5. uvicorn server:app --host 0.0.0.0 --port 8000 --reload
 
 # Note
 
