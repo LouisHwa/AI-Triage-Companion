@@ -21,7 +21,7 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 
 // ⚠️ CHANGE TO YOUR IP
-const API_URL = process.env.EXPO_PUBLIC_API_URL + "/chat";
+const API_URL = "http://192.168.1.106:8000/chat";
 
 // --- Typewriter Component ---
 const TypewriterText = memo(({ text, style }: { text: string; style: any }) => {

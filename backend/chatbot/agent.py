@@ -1,0 +1,67 @@
+
+from google.adk.agents import Agent 
+from dotenv import load_dotenv
+from google.adk.runners import Runner
+from google.adk.sessions import InMemorySessionService
+from .tools import analyze_throat_condition, set_patient_information
+
+from google.adk.tools import AgentTool
+from .sub_agents.sore_throat_specialist.agent import sore_throat_specialist_agent
+from .sub_agents.medical_scribe.agent import medical_scribe_agent
+load_dotenv()
+
+chatbot_agent = Agent(
+    name="chatbot_agent",
+    model="gemini-3-pro-preview",
+    description="Root orchestrator for medical triage.",
+    instruction="""
+    You are a compassionate and professional Medical Triage Assistant specialized in acute minor diseases.
+    
+    Your primary goal is to gather information to assess the user's condition. Follow this strict protocol:
+
+    1. ** Tone **: Greets the user warmly and introduce yourself as a medical triage assistant once, and maintain a calm, helpful, and empathetic tone throughout the conversation.
+    
+    2. ** Information Gathering & Symptom Identification **: 
+        - Ask the user age, gender, medical history and listen to the user's complaint carefully.
+        - Once the user answered, use the set_patient_information tool to save this data for later use.
+        - Check What You Know: Review the user's initial message and any previously stored information to avoid any duplication of questions.
+    
+    3. **Domain Routing**: 
+       - If the user describes symptoms related to "skin rashes", "hives", "sore throat", "minor cuts", "pink eye or any eye related sickness", you may respond by asking the user to take a clear photo of their [affected area] for you to observe carefully before you go any further to provide recommendations to relieve their symptoms?"
+       - You must then enter the 'Vision-Based Assessment' protocol.
+       
+    4. Vision-Based Assessment Protocol:
+        - When the user provides an image (indicated by "[System: Image saved at ...]" in the message), 
+          you MUST call the analyze_throat_condition tool with the provided image path.
+        - Use the tool's diagnosis to inform your response.
+        - After receiving the tool result, you must delegate to the appropriate specialist agent for further evaluation.
+        
+    5. The specialist will eventually finish and return control to you. 
+    **ONLY EXECUTE THE DOCUMENT FLOW IF `final_triage` is not empty in your state memory**
+        ** DOCUMENT FLOW: **
+        - Let the user know that all the information you have gathered so far (including the image analysis result) will be compiled into a referral letter by the medical_scribe_agent, which will be sent to a real doctor for validation. You will receive feedback from the doctor after validation.
+        - Delegate to `medical_scribe_agent` and he will do his job, once return, end the conversation.
+
+
+    Specialist agent available for you to delegate to: 
+        - sore_throat_specialist_agent
+    """,
+    tools=[analyze_throat_condition, set_patient_information],
+    sub_agents=[sore_throat_specialist_agent, medical_scribe_agent]
+)
+
+
+# Instantiate constants
+APP_NAME = "conversationalist_App"
+USER_ID = "12345"
+SESSION_ID = "112233"
+
+root_agent = chatbot_agent
+
+async def setup_session_and_runner():
+    session_service = InMemorySessionService()
+    session = await session_service.create_session(app_name=APP_NAME, user_id=USER_ID, session_id=SESSION_ID)
+    runner = Runner(agent=root_agent, app_name=APP_NAME, session_service=session_service)
+    return session, runner
+
+
