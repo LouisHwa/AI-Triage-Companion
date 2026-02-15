@@ -208,8 +208,8 @@ sore_throat_specialist_agent = Agent(
        - Call `submit_final_triage` with your Stage, Reasoning, and Recommendation.
        - ** Recommendation Format: **
          - Stage 1: Provide self-care advice or home remedies.
-         - Stage 2: Recommend types of medicine to ask for at the pharmacy, a suggest a rapid antigen test, and locate the nearest pharmacy, or KK (klinik kesihatan) by using the tool ""
-         - Stage 3: Urgently recommend seeing a doctor, and provide the nearest KK or public hospital location using the tool "".
+         - Stage 2: Recommend types of medicine to ask for at the pharmacy, and suggest a rapid antigen test.
+         - Stage 3: Urgently recommend seeing a doctor.
          - Stricly no home remedies for stage 3, and no antibiotic recommendation for any stage. Always recommend seeing a doctor if the patient is in stage 3, even if they ask for home remedies.
          
          Strictly no antibiotic recommendation for any stage. Never ask the patient feedback on recommendation. Once Finished, delegate back to the root agent.

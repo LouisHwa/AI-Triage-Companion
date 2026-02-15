@@ -1,6 +1,15 @@
 # AI-Triage-Companion
 
-# To start
+# Server
+
+1. cd backend
+2. python -m venv .venv
+3. .venv\Scripts\activate.bat
+4. pip install fastapi uvicorn google-genai python-dotenv Pillow python-multipart google-adk google-adk[extensions]
+5. uvicorn server:app --host 0.0.0.0 --port 8000 --reload
+6. ngrok http 8000 (global cmd) and update .env
+
+# mobile
 
 open cmd and
 
@@ -8,16 +17,8 @@ open cmd and
 2. cd mobile
 3. npx expo install @expo/vector-icons expo-image-picker expo-av
 4. Go chat.tsx, change line 23 to your ipv4 address
-5. npx expo start --tunnel
+5. npx expo start -c --tunnel
 6. Download Expo Go app in your mobile installer
-
-# Server
-
-1. cd backend
-2. python -m venv .venv
-3. .venv\Scripts\activate.bat
-4. pip install fastapi uvicorn google-genai python-dotenv Pillow python-multipart google-adk google-adk[extensions]
-5. uvicorn server:app --host \ --port 8000 --reload
 
 # Note
 
@@ -26,4 +27,4 @@ Your .env should have this following
 
 # Debugging the server
 
-http://192.168.1.106:8000/docs, needs to be updated manually, until ngrok is integrated
+http://192.168.1.106:8000/docs
