@@ -3,16 +3,15 @@ import uuid
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from google.genai import types
 from dotenv import load_dotenv
-from google.adk.sessions import InMemorySessionService
-from chatbot.agent import setup_session_and_runner, USER_ID, SESSION_ID
+from chatbot.agent import runner, initialize_session, USER_ID, SESSION_ID
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 from typing import List, Optional
 from pydantic import BaseModel
+from contextlib import asynccontextmanager
+
 
 load_dotenv()
-
-session_service = InMemorySessionService()
 
 app = FastAPI()
 
@@ -113,9 +112,8 @@ def fetch_nearby_medical(lat: float, lng: float, radius: int, api_key: str) -> L
         
     return results
 
+
 async def process_with_agent(message, image_path=None):
-    session, runner = await setup_session_and_runner()
-    
     # Include image path in the message if available
     if image_path:
         message = f"{message}\n[System: Image saved at {image_path}]"
@@ -139,6 +137,20 @@ async def process_with_agent(message, image_path=None):
             print(f"🟢 Final agent reply: {agent_reply}")  # ✅ Log final response
     
     return agent_reply
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    print("🚀 Initializing session...")
+    await initialize_session()
+    print("✅ Session initialized")
+
+    yield
+
+    # Shutdown
+    print("🛑 Shutting down")
+
+app = FastAPI(lifespan=lifespan)
 
 
 @app.post("/chat")
@@ -210,8 +222,8 @@ async def get_nearby_medical(request: LocationRequest):
     """
     # 1. HARDCODED FALLBACK (For testing backend without real GPS)
     # Coordinates for Sunway University, Malaysia
-    lat = request.latitude if request.latitude != 0 else 3.0671
-    lng = request.longitude if request.longitude != 0 else 101.6035
+    lat = request.latitude
+    lng = request.longitude
     
     print(f"📍 Searching medical places near: {lat}, {lng}")
     
