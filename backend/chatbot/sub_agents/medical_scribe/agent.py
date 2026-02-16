@@ -2,13 +2,54 @@
 from google.adk.agents import Agent 
 from dotenv import load_dotenv
 from google.adk.tools import ToolContext
+import mimetypes
 import os
 import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-
+from email.message import EmailMessage  
+from firestore_client import db
+from google.cloud import firestore
 
 load_dotenv()
+
+def create_refferal_entry(tool_context: ToolContext):
+    """
+    Creates a new document in Firestore under "referral" collection with the referral details.
+    """
+    chart = tool_context.state.get("patient_chart", {})
+    triage = tool_context.state.get("final_triage", {})
+    userID = "BdLcWMFmHjiPghRE7EZW"
+
+    try:
+        referral_data = {
+            "createdAt": firestore.SERVER_TIMESTAMP,
+            "userID": userID,
+            "triageData":[
+                {
+                    "symptoms": chart.get('symptoms', []),
+                    "vitals": chart.get('vitals', {}),
+                    "red_flags": chart.get('red_flags', 'None'),
+                    "absent":chart.get('absent', []),
+                    "stage": triage.get('stage', 'Unknown'),
+                    "reasoning": triage.get('reasoning', 'No reasoning provided'),
+                    "recommendation": triage.get('recommendation', 'No recommendation')
+                }
+            ],
+            "status": "pending_validation",
+            "validatedAt":"",
+            "validatedBy":"",
+            "validatedNotes":"",
+            "monitor_status":"ongoing",
+        }
+        update_time, doc_ref = db.collection("referrals").add(referral_data)
+
+        tool_context.state["referral_doc_id"] = doc_ref.id
+
+        print(f"Saved to Cloud Firestore with ID: {doc_ref.id}")
+        return doc_ref.id
+    
+    except Exception as e:
+        print(f"Firestore Error: Could not create referral entry. Reason: {str(e)}")
+
 
 # --- Tool to actually write the file ---
 def generate_referral_letter(
@@ -49,8 +90,7 @@ def generate_referral_letter(
     AI RCOMMENDATION:
     {triage.get('recommendation', 'No recommendation')}
 
-    IMAGES:
-    [Attached: {tool_context.state.get("image_path", "No image provided")}]
+    IMAGES ANALYSIS:
     Analyzed Findings: {tool_context.state.get("throat_image_analysis", {})}
     """
     
@@ -58,6 +98,14 @@ def generate_referral_letter(
     tool_context.state["generated_document"] = document_content
     
     return "Document generated successfully. Ready for validation."
+
+# Needs changes
+def generate_validation_url(referral_doc_id: str):
+    """
+    Generates a unique URL for the doctor to validate the referral.
+    """
+    base_url = os.getenv("PUBLIC_API_URL")
+    return f"{base_url}/doctor/validate_referral/{referral_doc_id}"
 
 def send_for_validation(
     doctor_email: str,
@@ -69,13 +117,13 @@ def send_for_validation(
     Args:
         doctor_email: The recipient address (e.g., hwalouis888@gmail.com)
     """
-    # 1. Retrieve the document from state
     document_content = tool_context.state.get("generated_document")
+    image_path = tool_context.state.get("image_path")
+    validation_url = generate_validation_url(tool_context.state.get("referral_doc_id", "unknown_id"))
     
     if not document_content:
         return "Error: No generated document found in state. Please draft the letter first."
 
-    # 2. Load System Credentials
     sender_email = os.getenv("SYSTEM_EMAIL_ADDRESS")
     sender_password = os.getenv("SYSTEM_EMAIL_PASSWORD")
 
@@ -83,29 +131,69 @@ def send_for_validation(
         return "Error: System email credentials are missing in .env file."
 
     try:
-        # 3. Create the Email Object
-        msg = MIMEMultipart()
+        msg = EmailMessage()
         msg['From'] = sender_email
         msg['To'] = doctor_email
         msg['Subject'] = "URGENT: AI Triage Referral Validation Required"
+        msg.set_content(
+            f"""
+        Medical Referral Letter
 
-        # Attach the document content as the email body
-        msg.attach(MIMEText(document_content, 'plain'))
+        {document_content}
 
-        # 4. Connect to Gmail SMTP Server
+        To validate this referral, open the following link:
+        {validation_url}
+        """
+        )
+
+        html_content = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif;">
+                <h2>Medical Referral Letter</h2>
+                <p>{document_content.replace("\n", "<br>")}</p>
+
+                <hr>
+
+                <p>
+                    <strong>Click below to validate this referral:</strong>
+                </p>
+
+                <p>
+                    <a href="{validation_url}" 
+                    style="background-color:#1976D2;
+                            color:white;
+                            padding:10px 15px;
+                            text-decoration:none;
+                            border-radius:5px;">
+                        Validate Referral
+                    </a>
+                </p>
+            </body>
+        </html>
+        """
+        msg.add_alternative(html_content, subtype="html")
+        
+        if image_path and os.path.exists(image_path):
+            with open(image_path, "rb") as f:
+                img_data = f.read()
+                img_name = image_path.split("/")[-1]
+
+                mime_type, _ = mimetypes.guess_type(image_path)
+
+                if mime_type:
+                    maintype, subtype = mime_type.split("/")
+                else:
+                    maintype, subtype = "application", "octet-stream"
+
+                msg.add_attachment(img_data, maintype=maintype, subtype=subtype, filename=img_name)
+
         print(f"Connecting to SMTP server to email {doctor_email}...")
-        
-        # Standard Gmail SMTP port is 587 for TLS
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls() # Secure the connection
-        
-        # Login using the App Password
-        server.login(sender_email, sender_password)
-        
-        # Send the email
-        server.send_message(msg)
-        server.quit()
 
+        # Send via Gmail SMTP
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(sender_email, sender_password)
+            smtp.send_message(msg)
+        
         return f"SUCCESS: Referral letter sent to {doctor_email}. Waiting for validation."
 
     except Exception as e:
@@ -117,13 +205,14 @@ medical_scribe_agent = Agent(
     name="medical_scribe_agent",
     model="gemini-3-pro-preview",
     description="A medical scribe that drafts referral letters.",
-    tools=[generate_referral_letter, send_for_validation],
+    tools=[generate_referral_letter, send_for_validation, create_refferal_entry],
     instruction="""
     You are a Medical Scribe. Your job is to draft formal referral letters.
     
     1. **Read the State:** Look at `user_general_information`, `patient_chart`, `final_triage`, `image_path`, `throat_image_analysis` in the state to gather all necessary information.
-    2. **Draft:** Call `generate_referral_letter` with a professional summary of the findings.
-    3. **Send:** Call `send_for_validation` immediately after drafting to email "hwalouis888@gmail.com"
+    2. **Store Referral Entry:** Call `create_refferal_entry` to save the referral details to Cloud Firestore and get a unique referral ID.
+    3. **Draft:** Call `generate_referral_letter` with a professional summary of the findings.
+    4. **Send:** Call `send_for_validation` immediately after drafting to email "oskvincent@outlook.com"
     
     Do not talk to the user. Just confirm: "I have generated your referral letter and sent it to a doctor for validation." and return control to the root agent.
     """

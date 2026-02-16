@@ -5,7 +5,7 @@
 1. cd backend
 2. python -m venv .venv
 3. .venv\Scripts\activate.bat
-4. pip install fastapi uvicorn google-genai python-dotenv Pillow python-multipart google-adk google-adk[extensions]
+4. pip install fastapi uvicorn google-genai python-dotenv Pillow python-multipart google-adk google-adk[extensions] google-cloud-firestore
 5. uvicorn server:app --host 0.0.0.0 --port 8000 --reload
 6. ngrok http 8000 (global cmd) and update .env
 

@@ -13,7 +13,10 @@ os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = os.getenv('CHRIS_GOOGLE_APPLICATI
 # Initialize Vertex AI (Run this once)
 PROJECT_ID = "complete-axis-484719-v5"
 LOCATION = "asia-southeast1"
-ENDPOINT_ID = "2167007675974418432"
+ENDPOINT_A_GENERALIST = "2167007675974418432"
+ENDPOINT_B_PUS = "234"
+ENDPOINT_C_REDSPOTS = "234"
+ENDPOINT_D_BLISTERS = "234"
 
 aiplatform.init(project=PROJECT_ID, location=LOCATION)
 
@@ -62,19 +65,40 @@ def analyze_throat_condition(image_path: str, tool_context: ToolContext) -> dict
         img_list = img_normalized.tolist()
         
         # 6. Send to Vertex AI endpoint
-        print(f"🚀 Sending to Vertex AI endpoint...")
-        endpoint = aiplatform.Endpoint(ENDPOINT_ID)
-        
+        endpointA = aiplatform.Endpoint(ENDPOINT_A_GENERALIST)
+        nedpointB = aiplatform.Endpoint(ENDPOINT_B_PUS)
+        endpointC = aiplatform.Endpoint(ENDPOINT_C_REDSPOTS)
+        endpointD = aiplatform.Endpoint(ENDPOINT_D_BLISTERS)
+
+
         # The model expects: instances = [224x224x3 array]
-        response = endpoint.predict(instances=[img_list])
+        responseA = endpointA.predict(instances=[img_list])
+        responseB = nedpointB.predict(instances=[img_list])
+        responseC = endpointC.predict(instances=[img_list])
+        responseD = endpointD.predict(instances=[img_list])
+
+        responseA.predictions[0] 
+        responseB.predictions[0]
+        responseC.predictions[0]
+        responseD.predictions[0]
+
+        prediction_results = {
+            **responseA.predictions[0],
+            **responseB.predictions[0],
+            **responseC.predictions[0],
+            **responseD.predictions[0],
+        }
 
         
-        print(f"📥 Raw Vertex AI response: {response}")
-        print(f"📥 Predictions: {response.predictions}")
+        print(f"📥 PredictionA: {responseA.predictions}")
+        print(f"📥 PredictionB: {responseB.predictions}")
+        print(f"📥 PredictionC: {responseC.predictions}")
+        print(f"📥 PredictionD: {responseD.predictions}")
+        print(f"✅ Combined Prediction: {prediction_results}")
+
         
         # 4. Parse result
-        prediction_result = response.predictions[0]
-        tool_context.state["throat_image_analysis"] = prediction_result # Save in state memory
+        tool_context.state["throat_image_analysis"] = prediction_results # Save in state memory
         tool_context.state["image_path"] = image_path # Save the image path in state for future reference
         
         # Example Predictions: [{'bacteria_probability': [0.0257937163], 'pus_level': [0.0174893811], 'redness_level': [0.0503518693], 'sore_throat': [0.0160628911], 'swollenness_level': [0.0321694538]}]
