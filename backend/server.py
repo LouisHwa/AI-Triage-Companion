@@ -15,15 +15,27 @@ from fastapi.responses import HTMLResponse
 
 load_dotenv()
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    print("🚀 Initializing session...")
+    await initialize_session()
+    print("✅ Session initialized")
 
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=["*"],  # for development
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
+    yield
+
+    # Shutdown
+    print("🛑 Shutting down")
+
+app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # for development
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # --- DATA MODELS ---
@@ -139,20 +151,6 @@ async def process_with_agent(message, image_path=None):
             print(f"🟢 Final agent reply: {agent_reply}")  # ✅ Log final response
     
     return agent_reply
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup
-    print("🚀 Initializing session...")
-    await initialize_session()
-    print("✅ Session initialized")
-
-    yield
-
-    # Shutdown
-    print("🛑 Shutting down")
-
-app = FastAPI(lifespan=lifespan)
 
 
 @app.post("/chat")
@@ -422,9 +420,7 @@ async def submit_validation(referral_id: str, action: str = Form(...), doctor_no
 @app.get("/user/{user_id}/referrals")
 async def get_user_referrals(user_id: str):
 
-    referrals = db.collection("referral") \
-                  .where("userID", "==", user_id) \
-                  .stream()
+    referrals = db.collection("referrals").where("userID", "==", user_id).stream()
 
     results = []
 

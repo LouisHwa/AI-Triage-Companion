@@ -44,6 +44,7 @@ const TypewriterText = memo(({ text, style }: { text: string; style: any }) => {
 
   return <ThemedText style={style}>{displayedText}</ThemedText>;
 });
+TypewriterText.displayName = 'TypewriterText';
 
 // --- Skeleton Loader ---
 const SkeletonLoader = memo(() => {
@@ -52,9 +53,17 @@ const SkeletonLoader = memo(() => {
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(shimmerAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
-        Animated.timing(shimmerAnim, { toValue: 0, duration: 1000, useNativeDriver: true }),
-      ])
+        Animated.timing(shimmerAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmerAnim, {
+          toValue: 0,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ]),
     ).start();
   }, []);
 
@@ -66,13 +75,20 @@ const SkeletonLoader = memo(() => {
   return (
     <View style={styles.skeletonContainer}>
       <View style={[styles.skeletonBubble, { borderBottomLeftRadius: 4 }]}>
-        <Animated.View style={[styles.skeletonLine, styles.skeletonLineLong, { opacity }]} />
-        <Animated.View style={[styles.skeletonLine, styles.skeletonLineMedium, { opacity }]} />
-        <Animated.View style={[styles.skeletonLine, styles.skeletonLineShort, { opacity }]} />
+        <Animated.View
+          style={[styles.skeletonLine, styles.skeletonLineLong, { opacity }]}
+        />
+        <Animated.View
+          style={[styles.skeletonLine, styles.skeletonLineMedium, { opacity }]}
+        />
+        <Animated.View
+          style={[styles.skeletonLine, styles.skeletonLineShort, { opacity }]}
+        />
       </View>
     </View>
   );
 });
+SkeletonLoader.displayName = 'SkeletonLoader';
 
 export default function ChatScreen() {
   const [messages, setMessages] = useState<any[]>([]);
@@ -105,7 +121,11 @@ export default function ChatScreen() {
     }
   }, [messages, isLoading]);
 
-  const sendToBackend = async (text: string | null, imageUri: string | null, audioUri: string | null) => {
+  const sendToBackend = async (
+    text: string | null,
+    imageUri: string | null,
+    audioUri: string | null,
+  ) => {
     setIsLoading(true);
     const userMessage = {
       id: Date.now().toString(),
@@ -119,8 +139,18 @@ export default function ChatScreen() {
 
     const formData = new FormData();
     if (text) formData.append("message", text);
-    if (imageUri) formData.append("file", { uri: imageUri, name: "photo.jpg", type: "image/jpeg" } as any);
-    if (audioUri) formData.append("audio", { uri: audioUri, name: "recording.m4a", type: "audio/mp4" } as any);
+    if (imageUri)
+      formData.append("file", {
+        uri: imageUri,
+        name: "photo.jpg",
+        type: "image/jpeg",
+      } as any);
+    if (audioUri)
+      formData.append("audio", {
+        uri: audioUri,
+        name: "recording.m4a",
+        type: "audio/mp4",
+      } as any);
 
     try {
       const response = await fetch(API_URL, {
@@ -144,17 +174,27 @@ export default function ChatScreen() {
   };
 
   const openCamera = async () => {
-    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.5 });
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.5,
+    });
     if (!result.canceled) sendToBackend(null, result.assets[0].uri, null);
   };
 
   const startRecording = async () => {
     try {
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-      const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY,
+      );
       setRecording(recording);
       setIsRecording(true);
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const stopRecording = async () => {
@@ -167,17 +207,33 @@ export default function ChatScreen() {
   };
 
   const renderItem = ({ item }: { item: any }) => (
-    <View style={[styles.messageContainer, item.sender === "user" ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }]}>
-      {item.image && <Image source={{ uri: item.image }} style={styles.standaloneImage} />}
+    <View
+      style={[
+        styles.messageContainer,
+        item.sender === "user"
+          ? { alignItems: "flex-end" }
+          : { alignItems: "flex-start" },
+      ]}
+    >
+      {item.image && (
+        <Image source={{ uri: item.image }} style={styles.standaloneImage} />
+      )}
       {item.hasText && (
-        <View style={[
-          styles.messageBubble, 
-          item.sender === "user" ? styles.userBubble : styles.botBubble
-        ]}>
+        <View
+          style={[
+            styles.messageBubble,
+            item.sender === "user" ? styles.userBubble : styles.botBubble,
+          ]}
+        >
           {item.sender === "bot" ? (
-            <TypewriterText text={item.text} style={[styles.botText, styles.messageTextFix]} />
+            <TypewriterText
+              text={item.text}
+              style={[styles.botText, styles.messageTextFix]}
+            />
           ) : (
-            <ThemedText style={[styles.userText, styles.messageTextFix]}>{item.text}</ThemedText>
+            <ThemedText style={[styles.userText, styles.messageTextFix]}>
+              {item.text}
+            </ThemedText>
           )}
         </View>
       )}
@@ -190,14 +246,17 @@ export default function ChatScreen() {
 
       <View style={styles.headerBar}>
         <ThemedText style={styles.headerTitle}>AI TRIAGE</ThemedText>
-        <TouchableOpacity onPress={() => setMessages([])} style={styles.refreshButton}>
+        <TouchableOpacity
+          onPress={() => setMessages([])}
+          style={styles.refreshButton}
+        >
           <Ionicons name="refresh-outline" size={24} color="#0a7ea4" />
         </TouchableOpacity>
       </View>
 
-      <KeyboardAvoidingView 
-        style={styles.container} 
-        behavior={Platform.OS === "ios" ? "padding" : "height"} 
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
         <ThemedView style={styles.innerContainer}>
@@ -206,26 +265,50 @@ export default function ChatScreen() {
             data={messages}
             renderItem={renderItem}
             keyExtractor={(item) => item.id}
-            contentContainerStyle={[styles.chatList, messages.length === 0 && styles.emptyListContainer]}
+            contentContainerStyle={[
+              styles.chatList,
+              messages.length === 0 && styles.emptyListContainer,
+            ]}
             ListEmptyComponent={
-              <Animated.View style={[styles.emptyContainer, { opacity: fadeAnim }]}>
-                <ThemedText style={styles.emptyText}>How can I help you?</ThemedText>
+              <Animated.View
+                style={[styles.emptyContainer, { opacity: fadeAnim }]}
+              >
+                <ThemedText style={styles.emptyText}>
+                  How can I help you?
+                </ThemedText>
               </Animated.View>
             }
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+            onContentSizeChange={() =>
+              flatListRef.current?.scrollToEnd({ animated: true })
+            }
           />
 
           {isLoading && <SkeletonLoader />}
 
           <View style={styles.inputWrapper}>
-            <View style={[styles.inputContainer, isRecording && styles.inputContainerRecording]}>
-              <TouchableOpacity onPress={openCamera} style={styles.iconButton} disabled={isRecording}>
-                <Ionicons name="camera-outline" size={26} color={isRecording ? "#ccc" : "black"} />
+            <View
+              style={[
+                styles.inputContainer,
+                isRecording && styles.inputContainerRecording,
+              ]}
+            >
+              <TouchableOpacity
+                onPress={openCamera}
+                style={styles.iconButton}
+                disabled={isRecording}
+              >
+                <Ionicons
+                  name="camera-outline"
+                  size={26}
+                  color={isRecording ? "#ccc" : "black"}
+                />
               </TouchableOpacity>
-              
+
               <TextInput
                 style={styles.textInput}
-                placeholder={isRecording ? "Recording audio..." : "Ask me anything..."}
+                placeholder={
+                  isRecording ? "Recording audio..." : "Ask me anything..."
+                }
                 placeholderTextColor={isRecording ? "red" : "#aaa"}
                 value={inputText}
                 onChangeText={setInputText}
@@ -233,15 +316,25 @@ export default function ChatScreen() {
               />
 
               {inputText.length > 0 ? (
-                <TouchableOpacity onPress={() => sendToBackend(inputText, null, null)} style={styles.iconButton}>
-                  <Ionicons name="arrow-forward-outline" size={26} color="black" />
+                <TouchableOpacity
+                  onPress={() => sendToBackend(inputText, null, null)}
+                  style={styles.iconButton}
+                >
+                  <Ionicons
+                    name="arrow-forward-outline"
+                    size={26}
+                    color="black"
+                  />
                 </TouchableOpacity>
               ) : (
-                <TouchableOpacity onPress={isRecording ? stopRecording : startRecording} style={styles.iconButton}>
-                  <Ionicons 
-                    name={isRecording ? "square" : "mic-outline"} 
-                    size={26} 
-                    color={isRecording ? "red" : "black"} 
+                <TouchableOpacity
+                  onPress={isRecording ? stopRecording : startRecording}
+                  style={styles.iconButton}
+                >
+                  <Ionicons
+                    name={isRecording ? "square" : "mic-outline"}
+                    size={26}
+                    color={isRecording ? "red" : "black"}
                   />
                 </TouchableOpacity>
               )}
@@ -256,8 +349,10 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#fff" },
   headerBar: {
-    paddingTop: Platform.OS === "android" ? (StatusBar.currentHeight || 0) + 10 : 10,
-    height: Platform.OS === "android" ? (StatusBar.currentHeight || 0) + 60 : 60,
+    paddingTop:
+      Platform.OS === "android" ? (StatusBar.currentHeight || 0) + 10 : 10,
+    height:
+      Platform.OS === "android" ? (StatusBar.currentHeight || 0) + 60 : 60,
     backgroundColor: "#fff",
     justifyContent: "center",
     alignItems: "center",
@@ -279,44 +374,83 @@ const styles = StyleSheet.create({
   innerContainer: { flex: 1, justifyContent: "space-between" },
   chatList: { padding: 15 },
   messageContainer: { marginVertical: 6, width: "100%" },
-  standaloneImage: { width: 280, height: 200, borderRadius: 20, marginBottom: 8 },
-  
+  standaloneImage: {
+    width: 280,
+    height: 200,
+    borderRadius: 20,
+    marginBottom: 8,
+  },
+
   // SHARED BUBBLE STYLES
-  messageBubble: { 
-    padding: 14, 
-    borderRadius: 22, 
+  messageBubble: {
+    padding: 14,
+    borderRadius: 22,
     maxWidth: "85%",
   },
   // USER: Sharp Bottom Right Corner
-  userBubble: { 
+  userBubble: {
     backgroundColor: "#0a7ea4",
     borderBottomRightRadius: 4,
   },
   // BOT: Sharp Bottom Left Corner
-  botBubble: { 
+  botBubble: {
     backgroundColor: "#f2f2f2",
     borderBottomLeftRadius: 4,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 5,
-    elevation: 1
+    elevation: 1,
   },
 
   userText: { color: "white", fontSize: 15, fontWeight: "500" },
   botText: { color: "black", fontSize: 15 },
   emptyListContainer: { flexGrow: 1, justifyContent: "center" },
   emptyContainer: { alignItems: "center" },
-  emptyText: { fontSize: 22, fontWeight: "700", textAlign: "center", opacity: 0.6 },
+  emptyText: {
+    fontSize: 22,
+    fontWeight: "700",
+    textAlign: "center",
+    opacity: 0.6,
+  },
   messageTextFix: { lineHeight: 22, includeFontPadding: false },
-  inputWrapper: { paddingHorizontal: 15, paddingVertical: 10, backgroundColor: "#fff" },
-  inputContainer: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", borderWidth: 1.5, borderColor: "#000", borderRadius: 50, paddingHorizontal: 10, minHeight: 50 },
+  inputWrapper: {
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    backgroundColor: "#fff",
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderWidth: 1.5,
+    borderColor: "#000",
+    borderRadius: 50,
+    paddingHorizontal: 10,
+    minHeight: 50,
+  },
   inputContainerRecording: { borderColor: "red" },
   textInput: { flex: 1, fontSize: 16, color: "#000", paddingHorizontal: 10 },
   iconButton: { padding: 6, justifyContent: "center", alignItems: "center" },
-  skeletonContainer: { paddingLeft: 15, paddingRight: 15, marginBottom: 15, alignItems: "flex-start" },
-  skeletonBubble: { backgroundColor: "#f2f2f2", padding: 12, borderRadius: 18, maxWidth: "80%", minWidth: 200 },
-  skeletonLine: { height: 12, backgroundColor: "#e0e0e0", borderRadius: 6, marginVertical: 4 },
+  skeletonContainer: {
+    paddingLeft: 15,
+    paddingRight: 15,
+    marginBottom: 15,
+    alignItems: "flex-start",
+  },
+  skeletonBubble: {
+    backgroundColor: "#f2f2f2",
+    padding: 12,
+    borderRadius: 18,
+    maxWidth: "80%",
+    minWidth: 200,
+  },
+  skeletonLine: {
+    height: 12,
+    backgroundColor: "#e0e0e0",
+    borderRadius: 6,
+    marginVertical: 4,
+  },
   skeletonLineLong: { width: "100%" },
   skeletonLineMedium: { width: "75%" },
   skeletonLineShort: { width: "50%" },

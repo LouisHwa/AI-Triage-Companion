@@ -5,6 +5,7 @@ import numpy as np
 from PIL import Image
 from google.adk.tools import ToolContext
 from dotenv import load_dotenv
+from firestore_client import db 
 
 load_dotenv()
 
@@ -73,7 +74,7 @@ def analyze_throat_condition(image_path: str, tool_context: ToolContext) -> dict
 
         # The model expects: instances = [224x224x3 array]
         responseA = endpointA.predict(instances=[img_list])
-        responseB = nedpointB.predict(instances=[img_list])
+        responseB = endpointB.predict(instances=[img_list])
         responseC = endpointC.predict(instances=[img_list])
         responseD = endpointD.predict(instances=[img_list])
 
@@ -111,7 +112,7 @@ def analyze_throat_condition(image_path: str, tool_context: ToolContext) -> dict
         #     "visual_biomarkers": prediction_result.get('biomarkers', ["redness", "swelling"]) # Example
         # }
 
-        return prediction_result
+        return prediction_results
     
 
     except Exception as e:
@@ -128,10 +129,13 @@ def set_patient_information(age: int, gender: str, medical_history:str , symptom
         medical_history (str): Prior pertinent medical history (possibly allergies, chronic conditions).
         symptom_description (str): Symptom description (e.g. user's current feeling of the sickness, itchyness, pain, duration).
     """
+
+    # Hardcoded user_ref for now
+    user_ref = db.collection("user").document("BdLcWMFmHjiPghRE7EZW").get().to_dict()
     user_general_information = tool_context.state.get("user_general_information", {
-        "age": [],
-        "gender": [],
-        "medical_history": [],
+        "age": user_ref['Age'],
+        "gender": user_ref['Gender'],
+        "medical_history": user_ref['Medical_History'],
         "symptom_description": []
     })
     user_general_information["age"] = age

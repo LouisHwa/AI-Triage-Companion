@@ -27,4 +27,4 @@ Your .env should have this following
 
 # Debugging the server
 
-http://192.168.1.104:8000/docs
+http://172.20.10.2:8000/docs
