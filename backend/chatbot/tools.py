@@ -131,7 +131,8 @@ def set_patient_information(age: int, gender: str, medical_history:str , symptom
     """
 
     # Hardcoded user_ref for now
-    user_ref = db.collection("user").document("BdLcWMFmHjiPghRE7EZW").get().to_dict()
+    userID = "BdLcWMFmHjiPghRE7EZW"
+    user_ref = db.collection("user").document(userID).get().to_dict()
     user_general_information = tool_context.state.get("user_general_information", {
         "age": user_ref['Age'],
         "gender": user_ref['Gender'],
@@ -144,5 +145,12 @@ def set_patient_information(age: int, gender: str, medical_history:str , symptom
     user_general_information["symptom_description"] = symptom_description
 
     tool_context.state["user_general_information"] = user_general_information
+    tool_context.state["userID"] = userID
 
     return f"Info updated. Current Confirmed Information: {user_general_information['age']}. Vitals: {user_general_information['symptom_description']}"
+
+def get_user_information():
+    userID = "BdLcWMFmHjiPghRE7EZW"
+    user_ref = db.collection("user").document(userID).get().to_dict()
+    return user_ref
+

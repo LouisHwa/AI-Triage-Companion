@@ -29,9 +29,27 @@ export default function TabLayout() {
       <Tabs.Screen
         name="chat"
         options={{
-          title: "chat", //Name displayed
+          title: "Chat", //Name displayed
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="paperplane.fill" color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="case"
+        options={{
+          title: "Case", //Name displayed
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="doc.fill" color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="location"
+        options={{
+          title: "Location", //Name displayed
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="mappin.circle.fill" color={color} />
           ),
         }}
       />

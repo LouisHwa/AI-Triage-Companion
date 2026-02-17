@@ -161,9 +161,10 @@ sore_throat_specialist_agent = Agent(
     ** First ** Retrieve the throat image analysis using 'get_throat_analysis' tool
          - Review the bacterial probability, pus level, redness, swollenness
          - Use this visual data to inform your questions
-         - If `has_pus` = 1 (+1 point), and consider this **Objective Evidence** of Tonsillar Exudate, even if the patient denies it.
-         - If `has_blister` = 1 (+1 point), and consider this **Objective Evidence** of Tonsillar Exudate, even if the patient denies it.
-         - If `redness level` > 0.7 (+1 point) or `swollenness level` > 0.7 (+1 point), consider this **Objective Evidence** of Swollen Anterior Cervical Nodes, even if the patient denies it.
+         - If `pus_probability` = 0.7 (+1 point), and consider this **Objective Evidence** of Tonsillar Exudate, even if the patient denies it.
+         - If `blister_probability` > 0.4 (+1 point), and consider this **Objective Evidence** of Tonsillar Exudate, even if the patient denies it.
+         - If `redness_score` > 0.7 (+1 point) or `swollenness_score` > 0.7 (+1 point) or `inflamation_score` > 0.7 (+1 point), consider this **Objective Evidence** of Swollen Anterior Cervical Nodes, even if the patient denies it.
+         - If `redspot_probability` > 0.7 (+1 point), and consider this **Objective Evidence** of Palatal Petechiae, even if the patient denies it.
 
     ** Second ** More factors to ask the patient:
         - **Age:** 3-14 (+1), 15-44 (0), >45 (-1)

@@ -17,7 +17,7 @@ def create_refferal_entry(tool_context: ToolContext):
     """
     chart = tool_context.state.get("patient_chart", {})
     triage = tool_context.state.get("final_triage", {})
-    userID = "BdLcWMFmHjiPghRE7EZW"
+    userID = tool_context.state.get("userID", {})
 
     try:
         referral_data = {

@@ -21,7 +21,7 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 
 // ⚠️ CHANGE TO YOUR IP
-const API_URL = "http://192.168.1.106:8000/chat";
+const API_URL = "https://adultly-peckiest-kourtney.ngrok-free.dev:8000/chat";
 
 // --- Typewriter Component ---
 const TypewriterText = memo(({ text, style }: { text: string; style: any }) => {
@@ -44,7 +44,7 @@ const TypewriterText = memo(({ text, style }: { text: string; style: any }) => {
 
   return <ThemedText style={style}>{displayedText}</ThemedText>;
 });
-TypewriterText.displayName = 'TypewriterText';
+TypewriterText.displayName = "TypewriterText";
 
 // --- Skeleton Loader ---
 const SkeletonLoader = memo(() => {
@@ -88,7 +88,7 @@ const SkeletonLoader = memo(() => {
     </View>
   );
 });
-SkeletonLoader.displayName = 'SkeletonLoader';
+SkeletonLoader.displayName = "SkeletonLoader";
 
 export default function ChatScreen() {
   const [messages, setMessages] = useState<any[]>([]);

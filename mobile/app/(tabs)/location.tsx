@@ -54,3 +54,14 @@ server returns list of nearby medical facilities in format:
 5. Show open/closed status based on the open_now field, and if null, show "Hours not available".
 6. USE YOUR CREATIVITY BA HAHAHAHAH
 */
+
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+
+export default function LocationScreen() {
+  return (
+    <ThemedView>
+      <ThemedText>Location Screen</ThemedText>
+    </ThemedView>
+  );
+}
