@@ -13,10 +13,10 @@ os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = os.getenv('CHRIS_GOOGLE_APPLICATI
 # Initialize Vertex AI (Run this once)
 PROJECT_ID = "complete-axis-484719-v5"
 LOCATION = "asia-southeast1"
-ENDPOINT_A_GENERALIST = "2167007675974418432"
-ENDPOINT_B_PUS = "234"
-ENDPOINT_C_REDSPOTS = "234"
-ENDPOINT_D_BLISTERS = "234"
+ENDPOINT_A_GENERALIST = "2360943934928060416"
+ENDPOINT_B_PUS = "3212124264501084160"
+ENDPOINT_C_REDSPOTS = "4959520919920836608"
+ENDPOINT_D_BLISTERS = "3090527074562080768"
 
 aiplatform.init(project=PROJECT_ID, location=LOCATION)
 
@@ -66,7 +66,7 @@ def analyze_throat_condition(image_path: str, tool_context: ToolContext) -> dict
         
         # 6. Send to Vertex AI endpoint
         endpointA = aiplatform.Endpoint(ENDPOINT_A_GENERALIST)
-        nedpointB = aiplatform.Endpoint(ENDPOINT_B_PUS)
+        endpointB = aiplatform.Endpoint(ENDPOINT_B_PUS)
         endpointC = aiplatform.Endpoint(ENDPOINT_C_REDSPOTS)
         endpointD = aiplatform.Endpoint(ENDPOINT_D_BLISTERS)
 
