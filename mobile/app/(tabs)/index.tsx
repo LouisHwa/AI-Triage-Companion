@@ -78,7 +78,7 @@ const TypingIndicator = memo(() => {
     animate(dot1, 0);
     animate(dot2, 250);
     animate(dot3, 500);
-  }, []);
+  });
 
   return (
     <View style={styles.typingContainer}>
@@ -117,7 +117,7 @@ export default function ChatScreen() {
       duration: 800,
       useNativeDriver: true,
     }).start();
-  }, []);
+  });
 
   useEffect(() => {
     if (messages.length > 0 || isLoading) {

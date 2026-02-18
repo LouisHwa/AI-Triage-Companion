@@ -3,6 +3,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   FlatList,
+  View,
   SafeAreaView,
   Alert,
   ActivityIndicator,
@@ -15,11 +16,9 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 
 import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
 
 // ⚠️ CHANGE TO YOUR API URL
-const API_URL =
-  "https://adultly-peckiest-kourtney.ngrok-free.dev/api/geo/nearby";
+const API_URL = "https://adultly-peckiest-kourtney.ngrok-free.dev";
 
 interface MedicalFacility {
   id: string;
@@ -243,10 +242,10 @@ export default function LocationScreen() {
   };
 
   const renderFacilityItem = ({ item }: { item: MedicalFacility }) => (
-    <ThemedView style={styles.facilityCard}>
-      <ThemedView style={styles.facilityHeader}>
-        <ThemedView style={styles.facilityTitleRow}>
-          <ThemedView
+    <View style={styles.facilityCard}>
+      <View style={styles.facilityHeader}>
+        <View style={styles.facilityTitleRow}>
+          <View
             style={[
               styles.typeIcon,
               { backgroundColor: getTypeColor(item.place_type) },
@@ -257,28 +256,28 @@ export default function LocationScreen() {
               size={20}
               color="#fff"
             />
-          </ThemedView>
-          <ThemedView style={styles.facilityInfo}>
+          </View>
+          <View style={styles.facilityInfo}>
             <ThemedText style={styles.facilityName} numberOfLines={2}>
               {item.name}
             </ThemedText>
-            <ThemedView style={styles.facilityMeta}>
-              <ThemedView style={styles.ratingContainer}>
+            <View style={styles.facilityMeta}>
+              <View style={styles.ratingContainer}>
                 <Ionicons name="star" size={14} color="#FFB300" />
                 <ThemedText style={styles.ratingText}>
                   {item.rating?.toFixed(1)} ({item.user_ratings_total})
                 </ThemedText>
-              </ThemedView>
-              <ThemedView style={styles.distanceContainer}>
+              </View>
+              <View style={styles.distanceContainer}>
                 <Ionicons name="navigate" size={14} color="#666" />
                 <ThemedText style={styles.distanceText}>
                   {item.calculatedDistance?.toFixed(2)} km
                 </ThemedText>
-              </ThemedView>
-            </ThemedView>
-          </ThemedView>
-        </ThemedView>
-        <ThemedView
+              </View>
+            </View>
+          </View>
+        </View>
+        <View
           style={[
             styles.statusBadge,
             { backgroundColor: getStatusColor(item.open_now) },
@@ -287,8 +286,8 @@ export default function LocationScreen() {
           <ThemedText style={styles.statusText}>
             {getStatusText(item.open_now)}
           </ThemedText>
-        </ThemedView>
-      </ThemedView>
+        </View>
+      </View>
 
       <ThemedText style={styles.facilityAddress} numberOfLines={2}>
         {item.address}
@@ -303,7 +302,7 @@ export default function LocationScreen() {
           Get Directions
         </ThemedText>
       </TouchableOpacity>
-    </ThemedView>
+    </View>
   );
 
   const renderFilterButton = (type: FilterType) => (
@@ -329,7 +328,7 @@ export default function LocationScreen() {
   if (locationPermissionDenied) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.errorContainer}>
+        <View style={styles.errorContainer}>
           <Ionicons name="location-outline" size={80} color="#ccc" />
           <ThemedText style={styles.errorTitle}>
             Location Access Required
@@ -344,7 +343,7 @@ export default function LocationScreen() {
           >
             <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
           </TouchableOpacity>
-        </ThemedView>
+        </View>
       </SafeAreaView>
     );
   }
@@ -353,7 +352,7 @@ export default function LocationScreen() {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
-      <ThemedView style={styles.headerBar}>
+      <View style={styles.headerBar}>
         <ThemedText style={styles.headerTitle}>
           Nearby Medical Facilities
         </ThemedText>
@@ -368,18 +367,18 @@ export default function LocationScreen() {
             color={isLoading ? "#ccc" : "#0a7ea4"}
           />
         </TouchableOpacity>
-      </ThemedView>
+      </View>
 
       {isLoading && !refreshing ? (
-        <ThemedView style={styles.loadingContainer}>
+        <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#0a7ea4" />
           <ThemedText style={styles.loadingText}>
             Finding nearby facilities...
           </ThemedText>
-        </ThemedView>
+        </View>
       ) : (
         <>
-          <ThemedView style={styles.filterContainer}>
+          <View style={styles.filterContainer}>
             <FlatList
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -390,7 +389,7 @@ export default function LocationScreen() {
               keyExtractor={(item: FilterType) => item}
               contentContainerStyle={styles.filterList}
             />
-          </ThemedView>
+          </View>
 
           <FlatList
             data={filteredFacilities}
@@ -407,7 +406,7 @@ export default function LocationScreen() {
               />
             }
             ListEmptyComponent={
-              <ThemedView style={styles.emptyContainer}>
+              <View style={styles.emptyContainer}>
                 <Ionicons name="search-outline" size={60} color="#ccc" />
                 <ThemedText style={styles.emptyText}>
                   No{" "}
@@ -417,7 +416,7 @@ export default function LocationScreen() {
                 <ThemedText style={styles.emptySubtext}>
                   Try adjusting your filters or pull down to refresh
                 </ThemedText>
-              </ThemedView>
+              </View>
             }
           />
         </>

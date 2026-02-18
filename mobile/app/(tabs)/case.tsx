@@ -13,7 +13,6 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
 
 // ⚠️ CHANGE TO YOUR API URL
 const API_BASE_URL = "https://adultly-peckiest-kourtney.ngrok-free.dev";
@@ -108,10 +107,10 @@ const StatusBadge = ({ status }: { status: string }) => {
   const style = getStatusStyle();
 
   return (
-    <ThemedView style={[styles.statusBadge, { backgroundColor: style.bg }]}>
+    <View style={[styles.statusBadge, { backgroundColor: style.bg }]}>
       <Ionicons name={style.icon} size={14} color="#fff" />
       <ThemedText style={styles.statusText}>{status}</ThemedText>
-    </ThemedView>
+    </View>
   );
 };
 
@@ -130,14 +129,12 @@ const MonitorStatusIndicator = ({ status }: { status: string }) => {
   };
 
   return (
-    <ThemedView style={styles.monitorStatusRow}>
-      <ThemedView
-        style={[styles.monitorDot, { backgroundColor: getColor() }]}
-      />
+    <View style={styles.monitorStatusRow}>
+      <View style={[styles.monitorDot, { backgroundColor: getColor() }]} />
       <ThemedText style={styles.monitorText}>
         {status.replace("_", " ").toUpperCase()}
       </ThemedText>
-    </ThemedView>
+    </View>
   );
 };
 
@@ -164,23 +161,23 @@ const ReferralCard = ({ item }: { item: Referral }) => {
   };
 
   return (
-    <ThemedView style={styles.cardContainer}>
+    <View style={styles.cardContainer}>
       {/* Card Header */}
-      <ThemedView style={styles.cardHeader}>
-        <ThemedView style={styles.cardHeaderLeft}>
-          <ThemedView
+      <View style={styles.cardHeader}>
+        <View style={styles.cardHeaderLeft}>
+          <View
             style={[
               styles.stageIndicator,
               { backgroundColor: getStageColor(triage.stage) },
             ]}
           >
             <Ionicons name="medical" size={20} color="#fff" />
-          </ThemedView>
-          <ThemedView style={styles.cardHeaderInfo}>
+          </View>
+          <View style={styles.cardHeaderInfo}>
             <ThemedText style={styles.stageTitle}>
               {triage.stage || "Triage Case"}
             </ThemedText>
-            <ThemedView style={styles.dateRow}>
+            <View style={styles.dateRow}>
               <Ionicons name="calendar-outline" size={12} color="#666" />
               <ThemedText style={styles.dateText}>
                 {formatDate(item.createdAt)}
@@ -189,56 +186,56 @@ const ReferralCard = ({ item }: { item: Referral }) => {
                 || Last Update:{" "}
                 {formatDate(item.last_check_in ?? item.createdAt)}
               </ThemedText>
-            </ThemedView>
-          </ThemedView>
-        </ThemedView>
+            </View>
+          </View>
+        </View>
         <StatusBadge status={item.status} />
-      </ThemedView>
+      </View>
 
       {/* Monitor Status */}
       <MonitorStatusIndicator status={item.monitor_status} />
 
       {/* Quick Summary */}
-      <ThemedView style={styles.summarySection}>
+      <View style={styles.summarySection}>
         <ThemedText
           numberOfLines={expanded ? undefined : 2}
           style={styles.summaryText}
         >
           {triage.reasoning}
         </ThemedText>
-      </ThemedView>
+      </View>
 
       {/* Expanded Details */}
       {expanded && (
-        <ThemedView style={styles.expandedContent}>
-          <ThemedView style={styles.divider} />
+        <View style={styles.expandedContent}>
+          <View style={styles.divider} />
 
           {/* Validated By Section */}
-          <ThemedView style={styles.validatedSection}>
-            <ThemedView style={styles.doctorHeader}>
+          <View style={styles.validatedSection}>
+            <View style={styles.doctorHeader}>
               <Ionicons
                 name="person-circle-outline"
                 size={24}
                 color="#0a7ea4"
               />
-              <ThemedView style={styles.doctorInfo}>
+              <View style={styles.doctorInfo}>
                 <ThemedText style={styles.doctorLabel}>Validated By</ThemedText>
                 <ThemedText style={styles.doctorName}>
                   {item.validatedBy}
                 </ThemedText>
-              </ThemedView>
-            </ThemedView>
-            <ThemedView style={styles.dateRow}>
+              </View>
+            </View>
+            <View style={styles.dateRow}>
               <Ionicons name="time-outline" size={12} color="#666" />
               <ThemedText style={styles.dateText}>
                 {formatDate(item.validatedAt)}
               </ThemedText>
-            </ThemedView>
-          </ThemedView>
+            </View>
+          </View>
 
           {/* Doctor's Notes */}
-          <ThemedView style={styles.detailSection}>
-            <ThemedView style={styles.sectionHeader}>
+          <View style={styles.detailSection}>
+            <View style={styles.sectionHeader}>
               <Ionicons
                 name="document-text-outline"
                 size={18}
@@ -247,15 +244,15 @@ const ReferralCard = ({ item }: { item: Referral }) => {
               <ThemedText style={styles.sectionTitle}>
                 Doctor&apos;s Notes
               </ThemedText>
-            </ThemedView>
+            </View>
             <ThemedText style={styles.detailText}>
               {item.validatedNotes}
             </ThemedText>
-          </ThemedView>
+          </View>
 
           {/* Recommendation */}
-          <ThemedView style={styles.detailSection}>
-            <ThemedView style={styles.sectionHeader}>
+          <View style={styles.detailSection}>
+            <View style={styles.sectionHeader}>
               <Ionicons
                 name="checkmark-done-outline"
                 size={18}
@@ -264,67 +261,67 @@ const ReferralCard = ({ item }: { item: Referral }) => {
               <ThemedText style={styles.sectionTitle}>
                 Recommendation
               </ThemedText>
-            </ThemedView>
+            </View>
             <ThemedText style={styles.detailText}>
               {triage.recommendation}
             </ThemedText>
-          </ThemedView>
+          </View>
 
           {/* Symptoms */}
           {triage.symptoms && triage.symptoms.length > 0 && (
-            <ThemedView style={styles.detailSection}>
-              <ThemedView style={styles.sectionHeader}>
+            <View style={styles.detailSection}>
+              <View style={styles.sectionHeader}>
                 <Ionicons name="fitness-outline" size={18} color="#FF9800" />
                 <ThemedText style={styles.sectionTitle}>
                   Symptoms ({triage.symptoms.length})
                 </ThemedText>
-              </ThemedView>
-              <ThemedView style={styles.tagContainer}>
+              </View>
+              <View style={styles.tagContainer}>
                 {triage.symptoms.map((symptom: string, idx: number) => (
-                  <ThemedView key={idx} style={styles.symptomTag}>
+                  <View key={idx} style={styles.symptomTag}>
                     <ThemedText style={styles.symptomText}>
                       {symptom.replace(/_/g, " ")}
                     </ThemedText>
-                  </ThemedView>
+                  </View>
                 ))}
-              </ThemedView>
-            </ThemedView>
+              </View>
+            </View>
           )}
 
           {/* Red Flags (if any) */}
           {triage.red_flags && triage.red_flags.length > 0 && (
-            <ThemedView style={styles.detailSection}>
-              <ThemedView style={styles.sectionHeader}>
+            <View style={styles.detailSection}>
+              <View style={styles.sectionHeader}>
                 <Ionicons name="warning-outline" size={18} color="#F44336" />
                 <ThemedText style={[styles.sectionTitle, { color: "#F44336" }]}>
                   Red Flags
                 </ThemedText>
-              </ThemedView>
-              <ThemedView style={styles.tagContainer}>
+              </View>
+              <View style={styles.tagContainer}>
                 {triage.red_flags.map((flag: string, idx: number) => (
-                  <ThemedView
+                  <View
                     key={idx}
                     style={[styles.symptomTag, styles.redFlagTag]}
                   >
                     <ThemedText style={styles.redFlagText}>
                       {flag.replace(/_/g, " ")}
                     </ThemedText>
-                  </ThemedView>
+                  </View>
                 ))}
-              </ThemedView>
-            </ThemedView>
+              </View>
+            </View>
           )}
 
           {/* Last Check-in (if available) */}
           {item.last_check_in && (
-            <ThemedView style={styles.checkInSection}>
+            <View style={styles.checkInSection}>
               <Ionicons name="pulse-outline" size={16} color="#666" />
               <ThemedText style={styles.checkInText}>
                 Last check-in: {formatDate(item.last_check_in)}
               </ThemedText>
-            </ThemedView>
+            </View>
           )}
-        </ThemedView>
+        </View>
       )}
 
       {/* Toggle Button */}
@@ -334,7 +331,7 @@ const ReferralCard = ({ item }: { item: Referral }) => {
         activeOpacity={0.7}
       >
         <ThemedText style={styles.toggleButtonText}>
-          {expanded ? "Hide Details" : "ThemedView Details"}
+          {expanded ? "Hide Details" : "View Details"}
         </ThemedText>
         <Ionicons
           name={expanded ? "chevron-up" : "chevron-down"}
@@ -342,7 +339,7 @@ const ReferralCard = ({ item }: { item: Referral }) => {
           color="#0a7ea4"
         />
       </TouchableOpacity>
-    </ThemedView>
+    </View>
   );
 };
 
@@ -384,13 +381,13 @@ export default function CasesScreen() {
   };
 
   const renderEmptyState = () => (
-    <ThemedView style={styles.emptyContainer}>
+    <View style={styles.emptyContainer}>
       <Ionicons name="folder-open-outline" size={80} color="#ccc" />
       <ThemedText style={styles.emptyTitle}>No Referrals Yet</ThemedText>
       <ThemedText style={styles.emptySubtext}>
         Your triage cases will appear here once you complete an assessment
       </ThemedText>
-    </ThemedView>
+    </View>
   );
 
   return (
@@ -398,13 +395,13 @@ export default function CasesScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
       {/* Header */}
-      <ThemedView style={styles.headerBar}>
-        <ThemedView>
+      <View style={styles.headerBar}>
+        <View>
           <ThemedText style={styles.headerTitle}>My Referrals</ThemedText>
           <ThemedText style={styles.headerSubtitle}>
             {referrals.length} {referrals.length === 1 ? "case" : "cases"}
           </ThemedText>
-        </ThemedView>
+        </View>
         <TouchableOpacity
           onPress={onRefresh}
           style={styles.refreshButton}
@@ -416,16 +413,16 @@ export default function CasesScreen() {
             color={loading || refreshing ? "#ccc" : "#0a7ea4"}
           />
         </TouchableOpacity>
-      </ThemedView>
+      </View>
 
       {/* Content */}
       {loading && !refreshing ? (
-        <ThemedView style={styles.loadingContainer}>
+        <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#0a7ea4" />
           <ThemedText style={styles.loadingText}>
             Loading your cases...
           </ThemedText>
-        </ThemedView>
+        </View>
       ) : (
         <FlatList
           data={referrals}
