@@ -57,7 +57,7 @@ SESSION_ID = "112233"
 
 session_service = InMemorySessionService()
 
-Triagerunner = Runner(
+runner = Runner(
     agent=root_agent,
     app_name=APP_NAME,
     session_service=session_service

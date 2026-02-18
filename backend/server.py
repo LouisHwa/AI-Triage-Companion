@@ -3,7 +3,7 @@ import uuid
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from google.genai import types
 from dotenv import load_dotenv
-from chatbot.agent import Triagerunner, initialize_session, USER_ID, SESSION_ID
+from chatbot.agent import runner, initialize_session, USER_ID, SESSION_ID
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 from typing import List, Optional
