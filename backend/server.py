@@ -156,11 +156,12 @@ async def process_with_agent(message, image_path=None):
 @app.post("/chat")
 async def chat(
     message: str = Form(None),
+    referral_id: str = Form(None),  # New field for follow-up context
     file: UploadFile = File(None),
     audio: UploadFile = File(None)
 ):
     print(f"Received - Text: {message}, Image: {file.filename if file else 'No'}, Audio: {audio.filename if audio else 'No'}")
-
+    print(f"Referral ID: {referral_id}")  # ✅ Log referral ID for follow-up context
     saved_image_path = None
 
     # Handle Text
@@ -169,6 +170,15 @@ async def chat(
             message = "Analyze the input provided."
         else:
             message = ""
+
+    #handle refferel ID for follow-up context
+    if referral_id:
+        # We inject a system instruction to force the agent into the right context
+        system_trigger = f"SYSTEM_TRIGGER: ACTIVATE_MONITORING for Referral ID: {referral_id}"
+        if message:
+            message = f"{system_trigger}\nUser says: {message}"
+        else:
+            message = system_trigger
 
     # Handle Image - SAVE IT TO DISK
     if file:
