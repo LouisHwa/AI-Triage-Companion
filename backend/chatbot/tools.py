@@ -7,6 +7,9 @@ from google.cloud import aiplatform
 from google.adk.tools import ToolContext
 from dotenv import load_dotenv
 from firestore_client import db 
+from google.cloud import firestore
+from datetime import datetime
+
 
 load_dotenv()
 
@@ -191,3 +194,96 @@ def set_patient_information(age: int, gender: str, medical_history:str , symptom
 def get_user_information():
     userID = "BdLcWMFmHjiPghRE7EZW"
     return db.collection("user").document(userID).get().to_dict()
+
+#tools for monitoring 
+def fetch_case_history(referral_id: str, tool_context: ToolContext):
+    """
+    Retrieves the clinical context of a specific referral case from Firestore.
+    Use this to understand the patient's history before asking questions.
+    """
+    print(f"🔍 Fetching history for referral: {referral_id}")
+    
+    doc_ref = db.collection("referrals").document(referral_id)
+    doc = doc_ref.get()
+
+    if not doc.exists:
+        return "System Error: Case ID not found in database."
+
+    data = doc.to_dict()
+    
+    # Extract critical info safely
+
+    triage_list = data.get('triageData', [])
+    triage = triage_list[0] if triage_list else {}
+    doctor_notes = data.get('validatedNotes', 'None')
+    monitor_status = data.get('monitor_status', 'ongoing')
+    
+    # Fetch check-in history if user have checked in before
+    check_ins_stream = doc_ref.collection("check_ins")\
+        .order_by("timestamp", direction=firestore.Query.ASCENDING)\
+        .stream()
+    
+    check_in_history = ""
+    for log in check_ins_stream:
+        log_data = log.to_dict()
+        date_str = log_data.get('timestamp', datetime.now()).strftime("%Y-%m-%d")
+        status = log_data.get('status', 'unknown')
+        notes = log_data.get('notes', 'No notes')
+        
+        check_in_history += f"   - [{date_str}] Status {status}: \"{notes}\"\n"
+
+    # Fallback if no history
+    if not check_in_history:
+        check_in_history = "   - No previous check-ins."
+
+    # Save specific context to state for the conversation duration
+    tool_context.state["current_referral_id"] = referral_id
+    
+    # Format for the LLM
+    summary = f"""
+    [OFFICIAL PATIENT RECORD]
+    - Status: {monitor_status.upper()}
+    - Original Diagnosis: {triage.get('stage', 'Unknown')}
+    - Key Symptoms: {', '.join(triage.get('symptoms', []))}
+    - Doctor's Note: "{doctor_notes}"
+    - Doctor's Recommendation: "{triage.get('recommendation', 'N/A')}"
+    [RECOVERY TIMELINE]
+    {check_in_history}
+    """
+    return summary
+
+def update_recovery_status( monitor_status: str, patient_update: str, tool_context: ToolContext):
+    """
+    Updates the patient's recovery status in the database.
+    
+    Args:
+        status: 'recovered' (fully better), 'worsened' (needs doctor), or 'ongoing' (still healing).
+        patient_update: A brief summary of what the patient said today (e.g., "Fever is gone, throat still scratchy").
+    """
+    referral_id = tool_context.state.get("current_referral_id")
+    
+    if not referral_id:
+        return "Error: No active referral ID found in context. Cannot update."
+
+    doc_ref = db.collection("referrals").document(referral_id)
+    
+    try:
+        # 1. Update the main document status
+        doc_ref.update({
+            "monitor_status": monitor_status,
+            "last_check_in": firestore.SERVER_TIMESTAMP,
+            "check_in_count": firestore.Increment(1)
+        })
+        
+        # 2. Add an audit log entry (Sub-collection)
+        doc_ref.collection("check_ins").add({
+            "timestamp": firestore.SERVER_TIMESTAMP,
+            "status": monitor_status,
+            "notes": patient_update,
+            "automated": True
+        })
+
+        return f"SUCCESS: Database updated. Patient marked as {monitor_status}."
+        
+    except Exception as e:
+        return f"Database Error: {str(e)}"
