@@ -138,14 +138,69 @@ def update_patient_chart(
 
     return f"Chart Updated. Red Flags: {chart['red_flags']}. Symptoms: {chart['symptoms']}. Severity Data: {chart['severity_metrics']}."
 
+def update_referral(tool_context: ToolContext):
+    """
+    Updates the existing referral document with a NEW triage assessment.
+    Call this ONLY when a patient's condition has changed (e.g., Worsened).
+    """
+    # 1. Retrieve Context from State
+    referral_id = tool_context.state.get("current_referral_id")
+    new_triage = tool_context.state.get("final_triage")
+    chart = tool_context.state.get("patient_chart", {})
+
+    # 2. Safety Checks
+    if not referral_id:
+        return "Error: No Referral ID found. Cannot update record."
+    if not new_triage:
+        return "Error: No new triage results found. Perform assessment first."
+
+    try:
+        doc_ref = db.collection("referrals").document(referral_id)
+        
+        # 3. Create the new Triage Entry
+        # We append this to the history so we can see the progression (Day 1 vs Day 3)
+        new_entry = {
+            "stage": new_triage.get('stage', 'Unknown'),
+            "symptoms": chart.get('symptoms', []),
+            "vitals": chart.get('vitals', {}),
+            "red_flags": chart.get('red_flags', []),
+            "reasoning": new_triage.get('reasoning', 'Re-evaluation update'),
+            "recommendation": new_triage.get('recommendation', 'See doctor'),
+            "timestamp": firestore.SERVER_TIMESTAMP, # Mark when this happened
+            "is_reevaluation": True
+        }
+
+        # 4. Atomic Update: Append to array AND update main status
+        doc_ref.update({
+            "triageData": firestore.ArrayUnion([new_entry]),
+            "monitor_status": "ESCALATED", # Flag for the doctor portal
+            "last_updated": firestore.SERVER_TIMESTAMP
+        })
+
+        return f"SUCCESS: Referral {referral_id} updated with new Stage: {new_entry['stage']}."
+
+    except Exception as e:
+        print(f"❌ Database Update Failed: {e}")
+        return f"Database Error: {str(e)}"
 
 sore_throat_specialist_agent = Agent(
     name="sore_throat_specialist_agent",
     model="gemini-3-pro-preview",
     description="Medical triage specialist for acute throat conditions.",
-    tools=[get_throat_analysis, update_patient_chart, submit_final_triage, get_user_information],
+    tools=[get_throat_analysis, update_patient_chart, submit_final_triage, get_user_information, update_referral],
     instruction="""
     You are a Nurse Practitioner performing a triage assessment for a sore throat.
+
+    ### CRITICAL PROTOCOL: CHECK HISTORY FIRST
+        **BEFORE** saying anything, look at the `patient_chart` in the state, or check if the user is in re-evaluation mode.
+        
+        **IF `patient_chart` IS NOT EMPTY (Re-evaluation Mode):**
+        1. Do NOT ask for age, gender, or image again.
+        2. Read the User's last message immediately to find **NEW symptoms** (e.g., "I have a fever").
+        3. Call `update_patient_chart` with the new symptoms.
+        4. Immediately re-calculate the Centor Score (Old Data + New Data).
+        5. Call `submit_final_triage` with the NEW stage.
+        6. Tell the user: "I've updated your chart. Because of [new symptom], your severity has increased to [Stage X]. I now recommend..."
 
     ### YOUR KNOWLEDGE BASE (THE PROTOCOL)
     You will assess patients based on the following clinical criteria guidelines.
@@ -206,6 +261,9 @@ sore_throat_specialist_agent = Agent(
        
     4. **Finalize:**
        - Once you have enough data to determine the Stage (1, 2, or 3), call `submit_final_triage`.
+       **CRITICAL RE-EVALUATION STEP:** IF you are re-evaluating an existing case (i.e., `patient_chart` was not empty at start) AND the severity has worsened (e.g., Stage 1 -> Stage 3):
+         **You MUST call `update_referral_with_new_triage` immediately.**
+         
        - Call `submit_final_triage` with your Stage, Reasoning, and Recommendation.
        - ** Recommendation Format: **
          - Stage 1: Provide self-care advice or home remedies.
@@ -215,5 +273,6 @@ sore_throat_specialist_agent = Agent(
          
         - Tell the user what you've concluded on your final_triage.
         - Strictly no antibiotic recommendation for any stage. Never ask the patient feedback on recommendation. Once Finished, delegate back to the root agent.
+
     """
 )
