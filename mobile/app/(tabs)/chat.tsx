@@ -17,25 +17,33 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { Audio } from "expo-av";
 
+
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 
+
 // ⚠️ CHANGE TO YOUR IP
-const API_BASE_URL =
-  "https://adultly-peckiest-kourtney.ngrok-free.dev:8000/chat";
+const API_BASE_URL = "https://madilynn-unidolised-nonjournalistically.ngrok-free.dev/chat";
+
 
 // --- Typewriter Component ---
 const TypewriterText = memo(({ text, style }: { text: string; style: any }) => {
   const [displayedText, setDisplayedText] = useState("");
   const index = useRef(0);
 
+
   useEffect(() => {
-    const speed = 1;
+    // Reset if text changes
+    setDisplayedText("");
+    index.current = 0;
+
+
+    const speed = 10;
     const timer = setInterval(() => {
       if (index.current < text.length) {
-        const chunk = text.slice(index.current, index.current + 5);
+        const chunk = text.slice(index.current, index.current + 3);
         setDisplayedText((prev) => prev + chunk);
-        index.current += 5;
+        index.current += 3;
       } else {
         clearInterval(timer);
       }
@@ -43,53 +51,58 @@ const TypewriterText = memo(({ text, style }: { text: string; style: any }) => {
     return () => clearInterval(timer);
   }, [text]);
 
+
   return <ThemedText style={style}>{displayedText}</ThemedText>;
 });
 TypewriterText.displayName = "TypewriterText";
 
-// --- Skeleton Loader ---
-const SkeletonLoader = memo(() => {
-  const shimmerAnim = useRef(new Animated.Value(0)).current;
+
+// --- Typing Indicator (3 Bouncing Dots) ---
+const TypingIndicator = memo(() => {
+  const dot1 = useRef(new Animated.Value(0.3)).current;
+  const dot2 = useRef(new Animated.Value(0.3)).current;
+  const dot3 = useRef(new Animated.Value(0.3)).current;
+
 
   useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(shimmerAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(shimmerAnim, {
-          toValue: 0,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ]),
-    ).start();
-  });
+    const animate = (dot: Animated.Value, delay: number) => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(dot, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+            delay: delay,
+          }),
+          Animated.timing(dot, {
+            toValue: 0.3,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    };
 
-  const opacity = shimmerAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.3, 0.7],
-  });
+
+    animate(dot1, 0);
+    animate(dot2, 250);
+    animate(dot3, 500);
+  }, []);
+
 
   return (
-    <View style={styles.skeletonContainer}>
-      <View style={[styles.skeletonBubble, { borderBottomLeftRadius: 4 }]}>
-        <Animated.View
-          style={[styles.skeletonLine, styles.skeletonLineLong, { opacity }]}
-        />
-        <Animated.View
-          style={[styles.skeletonLine, styles.skeletonLineMedium, { opacity }]}
-        />
-        <Animated.View
-          style={[styles.skeletonLine, styles.skeletonLineShort, { opacity }]}
-        />
+    <View style={styles.typingContainer}>
+      {/* 🟢 FIX: Added 'styles.messageBubble' so it gets the rounded corners */}
+      <View style={[styles.messageBubble, styles.botBubble, styles.typingBubble]}>
+        <Animated.View style={[styles.typingDot, { opacity: dot1 }]} />
+        <Animated.View style={[styles.typingDot, { opacity: dot2 }]} />
+        <Animated.View style={[styles.typingDot, { opacity: dot3 }]} />
       </View>
     </View>
   );
 });
-SkeletonLoader.displayName = "SkeletonLoader";
+TypingIndicator.displayName = 'TypingIndicator';
+
 
 export default function ChatScreen() {
   const [messages, setMessages] = useState<any[]>([]);
@@ -98,36 +111,43 @@ export default function ChatScreen() {
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isRecording, setIsRecording] = useState(false);
 
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
+
 
   useEffect(() => {
     (async () => {
       await Audio.requestPermissionsAsync();
       await ImagePicker.requestCameraPermissionsAsync();
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
     })();
+
 
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 800,
       useNativeDriver: true,
     }).start();
-  });
+  }, []);
+
 
   useEffect(() => {
-    if (messages.length > 0) {
+    if (messages.length > 0 || isLoading) {
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
     }
   }, [messages, isLoading]);
 
+
   const sendToBackend = async (
     text: string | null,
     imageUri: string | null,
     audioUri: string | null,
   ) => {
-    setIsLoading(true);
+   
+    // 1. Show User Message Immediately
     const userMessage = {
       id: Date.now().toString(),
       text: text || (audioUri ? "Audio message" : null),
@@ -137,7 +157,10 @@ export default function ChatScreen() {
     };
     setMessages((prev) => [...prev, userMessage]);
     setInputText("");
+    setIsLoading(true); // Show typing indicator immediately
 
+
+    // 2. Prepare Data
     const formData = new FormData();
     if (text) formData.append("message", text);
     if (imageUri)
@@ -153,13 +176,31 @@ export default function ChatScreen() {
         type: "audio/mp4",
       } as any);
 
+
+    // 3. 🟢 Handle "Thanks" Message for Images with 1.5s DELAY
+    if (imageUri) {
+      setTimeout(() => {
+        const ackMessage = {
+          id: Date.now().toString() + "_ack",
+          text: "Thanks for the photo! 📸\nPlease wait a moment while I analyze it...",
+          sender: "bot",
+          hasText: true,
+        };
+        // We use functional update to safely append to whatever state exists then
+        setMessages((prev) => [...prev, ackMessage]);
+      }, 1500);
+    }
+
+
     try {
+      // 4. Fetch from Backend (Happens in background immediately)
       const response = await fetch(API_BASE_URL, {
         method: "POST",
         body: formData,
         headers: { Accept: "application/json" },
       });
       const data = await response.json();
+     
       const botMessage = {
         id: (Date.now() + 1).toString(),
         text: data.reply,
@@ -174,6 +215,7 @@ export default function ChatScreen() {
     }
   };
 
+
   const openCamera = async () => {
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -181,6 +223,16 @@ export default function ChatScreen() {
     });
     if (!result.canceled) sendToBackend(null, result.assets[0].uri, null);
   };
+
+
+  const openGallery = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.5,
+    });
+    if (!result.canceled) sendToBackend(null, result.assets[0].uri, null);
+  };
+
 
   const startRecording = async () => {
     try {
@@ -198,6 +250,7 @@ export default function ChatScreen() {
     }
   };
 
+
   const stopRecording = async () => {
     setIsRecording(false);
     if (!recording) return;
@@ -206,6 +259,7 @@ export default function ChatScreen() {
     setRecording(null);
     if (uri) sendToBackend(null, null, uri);
   };
+
 
   const renderItem = ({ item }: { item: any }) => (
     <View
@@ -241,9 +295,11 @@ export default function ChatScreen() {
     </View>
   );
 
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+
 
       <View style={styles.headerBar}>
         <ThemedText style={styles.headerTitle}>AI TRIAGE</ThemedText>
@@ -254,6 +310,7 @@ export default function ChatScreen() {
           <Ionicons name="refresh-outline" size={24} color="#0a7ea4" />
         </TouchableOpacity>
       </View>
+
 
       <KeyboardAvoidingView
         style={styles.container}
@@ -279,12 +336,12 @@ export default function ChatScreen() {
                 </ThemedText>
               </Animated.View>
             }
+            ListFooterComponent={isLoading ? <TypingIndicator /> : null}
             onContentSizeChange={() =>
               flatListRef.current?.scrollToEnd({ animated: true })
             }
           />
 
-          {isLoading && <SkeletonLoader />}
 
           <View style={styles.inputWrapper}>
             <View
@@ -293,6 +350,21 @@ export default function ChatScreen() {
                 isRecording && styles.inputContainerRecording,
               ]}
             >
+              {/* Gallery Button */}
+              <TouchableOpacity
+                onPress={openGallery}
+                style={styles.iconButton}
+                disabled={isRecording}
+              >
+                <Ionicons
+                  name="image-outline"
+                  size={26}
+                  color={isRecording ? "#ccc" : "black"}
+                />
+              </TouchableOpacity>
+
+
+              {/* Camera Button */}
               <TouchableOpacity
                 onPress={openCamera}
                 style={styles.iconButton}
@@ -305,6 +377,7 @@ export default function ChatScreen() {
                 />
               </TouchableOpacity>
 
+
               <TextInput
                 style={styles.textInput}
                 placeholder={
@@ -315,6 +388,7 @@ export default function ChatScreen() {
                 onChangeText={setInputText}
                 editable={!isRecording}
               />
+
 
               {inputText.length > 0 ? (
                 <TouchableOpacity
@@ -346,6 +420,7 @@ export default function ChatScreen() {
     </SafeAreaView>
   );
 }
+
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#fff" },
@@ -382,7 +457,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
 
-  // SHARED BUBBLE STYLES
+
+  // --- SHARED BUBBLE STYLES ---
   messageBubble: {
     padding: 14,
     borderRadius: 22,
@@ -403,6 +479,7 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 1,
   },
+
 
   userText: { color: "white", fontSize: 15, fontWeight: "500" },
   botText: { color: "black", fontSize: 15 },
@@ -433,26 +510,28 @@ const styles = StyleSheet.create({
   inputContainerRecording: { borderColor: "red" },
   textInput: { flex: 1, fontSize: 16, color: "#000", paddingHorizontal: 10 },
   iconButton: { padding: 6, justifyContent: "center", alignItems: "center" },
-  skeletonContainer: {
-    paddingLeft: 15,
-    paddingRight: 15,
-    marginBottom: 15,
+ 
+  // --- TYPING INDICATOR STYLES ---
+  typingContainer: {
+    width: "100%",
     alignItems: "flex-start",
+    marginTop: 6,
+    marginBottom: 12,
   },
-  skeletonBubble: {
-    backgroundColor: "#f2f2f2",
-    padding: 12,
-    borderRadius: 18,
-    maxWidth: "80%",
-    minWidth: 200,
+  typingBubble: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 70,
+    height: 40,
+    marginLeft: 0,
   },
-  skeletonLine: {
-    height: 12,
-    backgroundColor: "#e0e0e0",
-    borderRadius: 6,
-    marginVertical: 4,
+  typingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#999",
+    marginHorizontal: 3,
   },
-  skeletonLineLong: { width: "100%" },
-  skeletonLineMedium: { width: "75%" },
-  skeletonLineShort: { width: "50%" },
 });
+
