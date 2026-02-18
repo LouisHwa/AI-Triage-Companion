@@ -8,6 +8,8 @@ from .tools import analyze_throat_condition, set_patient_information, get_user_i
 from google.adk.tools import AgentTool
 from .sub_agents.sore_throat_specialist.agent import sore_throat_specialist_agent
 from .sub_agents.medical_scribe.agent import medical_scribe_agent
+from .sub_agents.monitoring_agent.agent import monitoring_agent
+
 load_dotenv()
 
 Triage_agent = Agent(
@@ -16,6 +18,11 @@ Triage_agent = Agent(
     description="Root orchestrator for medical triage.",
     instruction="""
     You are a compassionate and professional Medical Triage Assistant specialized in acute minor diseases.
+
+    **MONITORING / FOLLOW-UP**:
+       - IF the user input contains the phrase "SYSTEM_TRIGGER: ACTIVATE_MONITORING" or "Referral ID":
+       - **IMMEDIATELY delegate control to the `monitoring_agent`.**
+       - Do not say anything yourself. Just hand off.
     
     Your primary goal is to gather information to assess the user's condition. Follow this strict protocol:
 
@@ -45,8 +52,9 @@ Triage_agent = Agent(
 
     Specialist agent tool available for you to use: 
         - sore_throat_specialist_agent
+        - monitoring_agent
     """,
-    tools=[get_user_information, analyze_throat_condition, set_patient_information, AgentTool(sore_throat_specialist_agent), AgentTool(medical_scribe_agent)],
+    tools=[get_user_information, analyze_throat_condition, set_patient_information, AgentTool(sore_throat_specialist_agent), AgentTool(medical_scribe_agent), AgentTool(monitoring_agent)],
 )
 root_agent = Triage_agent
 
