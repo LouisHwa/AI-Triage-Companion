@@ -163,16 +163,15 @@ async def chat(
 
     saved_image_path = None
 
-    # 1. Handle Text
+    # Handle Text
     if not message:
         if file or audio:
             message = "Analyze the input provided."
         else:
             message = ""
 
-    # 2. Handle Image - SAVE IT TO DISK
+    # Handle Image - SAVE IT TO DISK
     if file:
-        # Generate unique filename
         file_extension = file.filename.split('.')[-1] if '.' in file.filename else 'jpg'
         unique_filename = f"{uuid.uuid4()}.{file_extension}"
         saved_image_path = os.path.join(UPLOAD_DIR, unique_filename)
@@ -184,18 +183,12 @@ async def chat(
         
         print(f"✅ Image saved to: {saved_image_path}")
 
-    # 3. Handle Audio (if needed later)
+    # Handle Audio (if needed later)
     # ... your audio handling code ...
 
-    # 4. Generate Response
+    # Generate Response
     try:
         response = await process_with_agent(message, image_path=saved_image_path)
-        
-        # Clean up the temporary file after processing
-        # if saved_image_path and os.path.exists(saved_image_path):
-        #     os.remove(saved_image_path)
-        #     print(f"🗑️  Cleaned up: {saved_image_path}")
-        
         return {"reply": response}
     
     except Exception as e:

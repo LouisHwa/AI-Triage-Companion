@@ -21,7 +21,8 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 
 // ⚠️ CHANGE TO YOUR IP
-const API_URL = "https://adultly-peckiest-kourtney.ngrok-free.dev:8000/chat";
+const API_BASE_URL =
+  "https://adultly-peckiest-kourtney.ngrok-free.dev:8000/chat";
 
 // --- Typewriter Component ---
 const TypewriterText = memo(({ text, style }: { text: string; style: any }) => {
@@ -65,7 +66,7 @@ const SkeletonLoader = memo(() => {
         }),
       ]),
     ).start();
-  }, []);
+  });
 
   const opacity = shimmerAnim.interpolate({
     inputRange: [0, 1],
@@ -111,7 +112,7 @@ export default function ChatScreen() {
       duration: 800,
       useNativeDriver: true,
     }).start();
-  }, []);
+  });
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -153,7 +154,7 @@ export default function ChatScreen() {
       } as any);
 
     try {
-      const response = await fetch(API_URL, {
+      const response = await fetch(API_BASE_URL, {
         method: "POST",
         body: formData,
         headers: { Accept: "application/json" },
@@ -167,7 +168,7 @@ export default function ChatScreen() {
       };
       setMessages((prev) => [...prev, botMessage]);
     } catch (error) {
-      Alert.alert("Error", "Server connection failed.");
+      Alert.alert("Error", String(error));
     } finally {
       setIsLoading(false);
     }

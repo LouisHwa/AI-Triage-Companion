@@ -34,7 +34,7 @@ def create_refferal_entry(tool_context: ToolContext):
                     "recommendation": triage.get('recommendation', 'No recommendation')
                 }
             ],
-            "status": "pending_validation",
+            "status": "PENDING",
             "validatedAt":"",
             "validatedBy":"",
             "validatedNotes":"",

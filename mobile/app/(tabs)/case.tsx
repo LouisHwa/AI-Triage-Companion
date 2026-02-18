@@ -150,13 +150,15 @@ const StatusBadge = ({ status }: { status: string }) => {
 const ReferralCard = ({ item }: { item: any }) => {
   const [expanded, setExpanded] = useState(false);
   const triage = item.triageData[0] || {};
-  const date = new Date(item.createdAt).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 
   return (
     <View style={styles.cardContainer}>
@@ -166,7 +168,12 @@ const ReferralCard = ({ item }: { item: any }) => {
           <ThemedText type="defaultSemiBold" style={{ fontSize: 16 }}>
             {triage.stage || "Triage Case"}
           </ThemedText>
-          <ThemedText style={styles.dateText}>{date}</ThemedText>
+          <ThemedText style={styles.dateText}>
+            Created At: {formatDate(item.createdAt)}
+          </ThemedText>
+          <ThemedText style={styles.dateText}>
+            Last Updated: {formatDate(item.last_check_in)}
+          </ThemedText>
         </View>
         <StatusBadge status={item.status} />
       </View>
