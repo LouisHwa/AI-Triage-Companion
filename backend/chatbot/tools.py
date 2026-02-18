@@ -1,8 +1,9 @@
 import base64
-from google.cloud import aiplatform
 import os
 import numpy as np
+import concurrent.futures
 from PIL import Image
+from google.cloud import aiplatform
 from google.adk.tools import ToolContext
 from dotenv import load_dotenv
 from firestore_client import db 
@@ -11,146 +12,182 @@ load_dotenv()
 
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = os.getenv('CHRIS_GOOGLE_APPLICATION_CREDENTIALS')
 
-# Initialize Vertex AI (Run this once)
+# Initialize Vertex AI
 PROJECT_ID = "complete-axis-484719-v5"
 LOCATION = "asia-southeast1"
-ENDPOINT_A_GENERALIST = "2360943934928060416"
-ENDPOINT_B_PUS = "3212124264501084160"
-ENDPOINT_C_REDSPOTS = "4959520919920836608"
-ENDPOINT_D_BLISTERS = "3090527074562080768"
+ENDPOINT_A_GENERALIST = "6851032763416444928"
+ENDPOINT_B_PUS = "4664535144328069120"
+ENDPOINT_C_REDSPOTS = "4545189754202750976"
+ENDPOINT_D_BLISTERS = "4922366222995030016"
 
-aiplatform.init(project=PROJECT_ID, location=LOCATION)
+# Map for looping
+ENDPOINTS = {
+    "Generalist": ENDPOINT_A_GENERALIST,
+    "Pus":        ENDPOINT_B_PUS,
+    "RedSpots":   ENDPOINT_C_REDSPOTS,
+    "Blisters":   ENDPOINT_D_BLISTERS
+}
+
+try:
+    aiplatform.init(project=PROJECT_ID, location=LOCATION)
+    print("✅ Vertex AI Initialized")
+except Exception as e:
+    print(f"❌ Vertex AI Init Failed: {e}")
+
+
+# --- HELPER: FETCH USER INFO ---
+def fetch_user_data_background(userID):
+    try:
+        doc = db.collection("user").document(userID).get()
+        if doc.exists:
+            return doc.to_dict()
+        return {}
+    except Exception as e:
+        print(f"⚠️ Firestore Error: {e}")
+        return {}
 
 def analyze_throat_condition(image_path: str, tool_context: ToolContext) -> dict:
     """
-    Analyzes an image of a user's throat to detect anomalies like redness, swelling, or infection.
-    
-    Args:
-        image_path (str): The local file path to the image uploaded by the user.
-
-    Returns:
-        dict: A dictionary containing the 'diagnosis' (e.g., Sore Throat, Healthy), 
-              'confidence' score (0-1), and 'visual_biomarkers' (e.g., redness level).
+    Analyzes an image of a user's throat AND retrieves patient medical history simultaneously.
     """
     print(f"🔧 Tool called with image_path: {image_path}")
-    print(f"🔧 File exists? {os.path.exists(image_path)}")
-
+    
     if not os.path.exists(image_path):
-        print(f"❌ ERROR: File not found at {image_path}")
-        return {
-            "status": "error",
-            "message": f"Image file not found at {image_path}"
-        }
+        return {"status": "error", "message": f"Image file not found"}
     
     try:
-        # 1. Load and preprocess the image
-        # print("📸 Loading image...")
-        img = Image.open(image_path)
+        # --- 1. PREP IMAGE (MATCHING LOCAL SCRIPT) ---
+        img = Image.open(image_path).convert('RGB')
         
-        # 2. Convert to RGB (in case it's RGBA or grayscale)
-        img = img.convert('RGB')
-        # print(f"✅ Image mode: {img.mode}, Size: {img.size}")
-        
-        # 3. Resize to 224x224
+        # Resize to 224x224
         img_resized = img.resize((224, 224))
-        # print(f"✅ Resized to: {img_resized.size}")
         
-        # 4. Convert to numpy array and normalize to 0-1
+        # Convert to numpy array (float32)
+        # ⚠️ CRITICAL FIX: We do NOT divide by 255.0 anymore.
+        # This keeps values in range [0.0, 255.0] to match your local script.
         img_array = np.array(img_resized, dtype=np.float32)
-        img_normalized = img_array / 255.0  # Normalize pixel values to 0-1
         
-        print(f"✅ Image shape: {img_normalized.shape}")
-        print(f"✅ Value range: {img_normalized.min():.3f} - {img_normalized.max():.3f}")
+        print(f"✅ Image prepared. Shape: {img_array.shape}, Range: {img_array.min()} - {img_array.max()}")
         
-        # 5. Convert to list (JSON serializable)
-        img_list = img_normalized.tolist()
+        # Convert to list for JSON serialization
+        img_list = img_array.tolist()
         
-        # 6. Send to Vertex AI endpoint
-        endpointA = aiplatform.Endpoint(ENDPOINT_A_GENERALIST)
-        endpointB = aiplatform.Endpoint(ENDPOINT_B_PUS)
-        endpointC = aiplatform.Endpoint(ENDPOINT_C_REDSPOTS)
-        endpointD = aiplatform.Endpoint(ENDPOINT_D_BLISTERS)
+        # --- 2. PARALLEL EXECUTION ---
+        prediction_results = {}
+        user_info = {}
+        target_userID = "BdLcWMFmHjiPghRE7EZW"
+        
+        def call_model(name, endpoint_id):
+            try:
+                endpoint = aiplatform.Endpoint(endpoint_name=endpoint_id)
+                # Vertex AI expects instances as a list of inputs
+                response = endpoint.predict(instances=[img_list])
+                if response.predictions:
+                    return name, response.predictions[0]
+                return name, None
+            except Exception as e:
+                print(f"⚠️ {name} failed: {e}")
+                return name, {"error": str(e)}
 
+        print("🚀 Starting Super-Parallel Execution...")
+        
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            # A. Start Firestore Task
+            future_firestore = executor.submit(fetch_user_data_background, target_userID)
+            
+            # B. Start Model Tasks
+            future_models = {
+                executor.submit(call_model, name, eid): name 
+                for name, eid in ENDPOINTS.items()
+            }
+            
+            # C. Gather Model Results
+            for future in concurrent.futures.as_completed(future_models):
+                name, result = future.result()
+                if result:
+                    if isinstance(result, dict):
+                        prediction_results.update(result)
+                    else:
+                        prediction_results[f"{name}_score"] = result
 
-        # The model expects: instances = [224x224x3 array]
-        responseA = endpointA.predict(instances=[img_list])
-        responseB = endpointB.predict(instances=[img_list])
-        responseC = endpointC.predict(instances=[img_list])
-        responseD = endpointD.predict(instances=[img_list])
+            # D. Gather Firestore Result
+            user_info = future_firestore.result()
+            print(f"✅ Firestore Data Retrieved: {user_info.get('Age', 'Unknown')} y/o")
+            print(f"✅ Raw Predictions: {prediction_results}")
 
-        responseA.predictions[0] 
-        responseB.predictions[0]
-        responseC.predictions[0]
-        responseD.predictions[0]
+        # --- 3. LOGIC & THRESHOLDS ---
+        
+        def get_score(key_list, data):
+            for k in key_list:
+                if k in data:
+                    val = data[k]
+                    return float(val[0]) if isinstance(val, list) else float(val)
+            return 0.0
 
-        prediction_results = {
-            **responseA.predictions[0],
-            **responseB.predictions[0],
-            **responseC.predictions[0],
-            **responseD.predictions[0],
+        score_pus = get_score(['pus', 'pus_probability', 'pus_level', 'Pus_score'], prediction_results)
+        score_blisters = get_score(['blisters', 'blister_probability', 'Blisters_score'], prediction_results)
+        score_redspots = get_score(['redspots', 'redspot_probability', 'RedSpots_score'], prediction_results)
+        
+        score_redness = get_score(['redness_score', 'redness_level', 'Redness'], prediction_results)
+        score_swelling = get_score(['swelling_score', 'swollenness_level', 'Swelling'], prediction_results)
+        score_inflammation = get_score(['inflammation_score', 'inflammation_level', 'Inflammation'], prediction_results)
+
+        # Thresholds (As requested)
+        has_pus = bool(score_pus >= 0.7)
+        has_blisters = bool(score_blisters >= 0.7)
+        has_redspots = bool(score_redspots >= 0.7)
+
+        severity_redness = "Severe" if score_redness >= 0.8 else "Mild/Moderate"
+        severity_swelling = "Severe" if score_swelling >= 0.8 else "Mild/Moderate"
+        severity_inflammation = "Severe" if score_inflammation >= 0.8 else "Mild/Moderate"
+
+        # --- 4. RETURN ---
+        analysis_summary = {
+            "status": "success",
+            "patient_context": {
+                "age": user_info.get('Age'),
+                "gender": user_info.get('Gender'),
+                "history": user_info.get('Medical_History'),
+            },
+            "diagnosis_flags": {
+                "has_pus": has_pus,
+                "has_blisters": has_blisters,
+                "has_redspots": has_redspots,
+            },
+            "severity_analysis": {
+                "redness": severity_redness,
+                "swelling": severity_swelling,
+                "inflammation": severity_inflammation
+            },
+            "raw_scores": prediction_results
         }
 
-        
-        print(f"📥 PredictionA: {responseA.predictions}")
-        print(f"📥 PredictionB: {responseB.predictions}")
-        print(f"📥 PredictionC: {responseC.predictions}")
-        print(f"📥 PredictionD: {responseD.predictions}")
-        print(f"✅ Combined Prediction: {prediction_results}")
+        if tool_context:
+            tool_context.state["throat_image_analysis"] = analysis_summary
+            tool_context.state["user_general_information"] = analysis_summary["patient_context"]
+            tool_context.state["image_path"] = image_path 
 
-        
-        # 4. Parse result
-        tool_context.state["throat_image_analysis"] = prediction_results # Save in state memory
-        tool_context.state["image_path"] = image_path # Save the image path in state for future reference
-        
-        # Example Predictions: [{'bacteria_probability': [0.0257937163], 'pus_level': [0.0174893811], 'redness_level': [0.0503518693], 'sore_throat': [0.0160628911], 'swollenness_level': [0.0321694538]}]
-        # Logic may add here but we shall see first (Logic as in deducing the numbers into conclusion)
-
-        # return {
-        #     "status": "success",
-        #     "diagnosis": prediction_result.get('label', 'Unknown'),
-        #     "confidence": prediction_result.get('score', 0.0),
-        #     "visual_biomarkers": prediction_result.get('biomarkers', ["redness", "swelling"]) # Example
-        # }
-
-        return prediction_results
-    
+        return analysis_summary
 
     except Exception as e:
+        print(f"❌ Fatal Error: {e}")
         return {"status": "error", "message": str(e)}
-    
 
+# --- LEGACY FUNCTIONS ---
 def set_patient_information(age: int, gender: str, medical_history:str , symptom_description: str, tool_context: ToolContext):
-    """
-    Update the user's general information based on information from the user
-
-    Args:
-        age (int): User's age.
-        gender (str): User's gender.
-        medical_history (str): Prior pertinent medical history (possibly allergies, chronic conditions).
-        symptom_description (str): Symptom description (e.g. user's current feeling of the sickness, itchyness, pain, duration).
-    """
-
-    # Hardcoded user_ref for now
+    # Minimal write-only function
     userID = "BdLcWMFmHjiPghRE7EZW"
-    user_ref = db.collection("user").document(userID).get().to_dict()
-    user_general_information = tool_context.state.get("user_general_information", {
-        "age": user_ref['Age'],
-        "gender": user_ref['Gender'],
-        "medical_history": user_ref['Medical_History'],
-        "symptom_description": []
-    })
-    user_general_information["age"] = age
-    user_general_information["gender"] = gender
-    user_general_information["medical_history"] = medical_history
-    user_general_information["symptom_description"] = symptom_description
-
+    user_general_information = tool_context.state.get("user_general_information", {})
+    
+    if age: user_general_information["age"] = age
+    if gender: user_general_information["gender"] = gender
+    if medical_history: user_general_information["medical_history"] = medical_history
+    if symptom_description: user_general_information["symptom_description"] = symptom_description
+    
     tool_context.state["user_general_information"] = user_general_information
     tool_context.state["userID"] = userID
-
-    return f"Info updated. Current Confirmed Information: {user_general_information['age']}. Vitals: {user_general_information['symptom_description']}"
+    return "Info updated."
 
 def get_user_information():
     userID = "BdLcWMFmHjiPghRE7EZW"
-    user_ref = db.collection("user").document(userID).get().to_dict()
-    return user_ref
-
+    return db.collection("user").document(userID).get().to_dict()
