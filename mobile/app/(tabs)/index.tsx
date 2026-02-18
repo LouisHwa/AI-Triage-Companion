@@ -17,26 +17,21 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { Audio } from "expo-av";
 
-
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 
-
 // ⚠️ CHANGE TO YOUR IP
-const API_BASE_URL = "https://madilynn-unidolised-nonjournalistically.ngrok-free.dev/chat";
-
+const API_BASE_URL = "https://adultly-peckiest-kourtney.ngrok-free.dev/chat";
 
 // --- Typewriter Component ---
 const TypewriterText = memo(({ text, style }: { text: string; style: any }) => {
   const [displayedText, setDisplayedText] = useState("");
   const index = useRef(0);
 
-
   useEffect(() => {
     // Reset if text changes
     setDisplayedText("");
     index.current = 0;
-
 
     const speed = 10;
     const timer = setInterval(() => {
@@ -51,18 +46,15 @@ const TypewriterText = memo(({ text, style }: { text: string; style: any }) => {
     return () => clearInterval(timer);
   }, [text]);
 
-
   return <ThemedText style={style}>{displayedText}</ThemedText>;
 });
 TypewriterText.displayName = "TypewriterText";
-
 
 // --- Typing Indicator (3 Bouncing Dots) ---
 const TypingIndicator = memo(() => {
   const dot1 = useRef(new Animated.Value(0.3)).current;
   const dot2 = useRef(new Animated.Value(0.3)).current;
   const dot3 = useRef(new Animated.Value(0.3)).current;
-
 
   useEffect(() => {
     const animate = (dot: Animated.Value, delay: number) => {
@@ -79,21 +71,21 @@ const TypingIndicator = memo(() => {
             duration: 500,
             useNativeDriver: true,
           }),
-        ])
+        ]),
       ).start();
     };
-
 
     animate(dot1, 0);
     animate(dot2, 250);
     animate(dot3, 500);
   }, []);
 
-
   return (
     <View style={styles.typingContainer}>
       {/* 🟢 FIX: Added 'styles.messageBubble' so it gets the rounded corners */}
-      <View style={[styles.messageBubble, styles.botBubble, styles.typingBubble]}>
+      <View
+        style={[styles.messageBubble, styles.botBubble, styles.typingBubble]}
+      >
         <Animated.View style={[styles.typingDot, { opacity: dot1 }]} />
         <Animated.View style={[styles.typingDot, { opacity: dot2 }]} />
         <Animated.View style={[styles.typingDot, { opacity: dot3 }]} />
@@ -101,8 +93,7 @@ const TypingIndicator = memo(() => {
     </View>
   );
 });
-TypingIndicator.displayName = 'TypingIndicator';
-
+TypingIndicator.displayName = "TypingIndicator";
 
 export default function ChatScreen() {
   const [messages, setMessages] = useState<any[]>([]);
@@ -111,10 +102,8 @@ export default function ChatScreen() {
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isRecording, setIsRecording] = useState(false);
 
-
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
-
 
   useEffect(() => {
     (async () => {
@@ -123,14 +112,12 @@ export default function ChatScreen() {
       await ImagePicker.requestMediaLibraryPermissionsAsync();
     })();
 
-
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 800,
       useNativeDriver: true,
     }).start();
   }, []);
-
 
   useEffect(() => {
     if (messages.length > 0 || isLoading) {
@@ -140,13 +127,11 @@ export default function ChatScreen() {
     }
   }, [messages, isLoading]);
 
-
   const sendToBackend = async (
     text: string | null,
     imageUri: string | null,
     audioUri: string | null,
   ) => {
-   
     // 1. Show User Message Immediately
     const userMessage = {
       id: Date.now().toString(),
@@ -158,7 +143,6 @@ export default function ChatScreen() {
     setMessages((prev) => [...prev, userMessage]);
     setInputText("");
     setIsLoading(true); // Show typing indicator immediately
-
 
     // 2. Prepare Data
     const formData = new FormData();
@@ -176,7 +160,6 @@ export default function ChatScreen() {
         type: "audio/mp4",
       } as any);
 
-
     // 3. 🟢 Handle "Thanks" Message for Images with 1.5s DELAY
     if (imageUri) {
       setTimeout(() => {
@@ -191,7 +174,6 @@ export default function ChatScreen() {
       }, 1500);
     }
 
-
     try {
       // 4. Fetch from Backend (Happens in background immediately)
       const response = await fetch(API_BASE_URL, {
@@ -200,7 +182,7 @@ export default function ChatScreen() {
         headers: { Accept: "application/json" },
       });
       const data = await response.json();
-     
+
       const botMessage = {
         id: (Date.now() + 1).toString(),
         text: data.reply,
@@ -215,7 +197,6 @@ export default function ChatScreen() {
     }
   };
 
-
   const openCamera = async () => {
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -224,7 +205,6 @@ export default function ChatScreen() {
     if (!result.canceled) sendToBackend(null, result.assets[0].uri, null);
   };
 
-
   const openGallery = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -232,7 +212,6 @@ export default function ChatScreen() {
     });
     if (!result.canceled) sendToBackend(null, result.assets[0].uri, null);
   };
-
 
   const startRecording = async () => {
     try {
@@ -250,7 +229,6 @@ export default function ChatScreen() {
     }
   };
 
-
   const stopRecording = async () => {
     setIsRecording(false);
     if (!recording) return;
@@ -259,7 +237,6 @@ export default function ChatScreen() {
     setRecording(null);
     if (uri) sendToBackend(null, null, uri);
   };
-
 
   const renderItem = ({ item }: { item: any }) => (
     <View
@@ -295,11 +272,9 @@ export default function ChatScreen() {
     </View>
   );
 
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-
 
       <View style={styles.headerBar}>
         <ThemedText style={styles.headerTitle}>AI TRIAGE</ThemedText>
@@ -310,7 +285,6 @@ export default function ChatScreen() {
           <Ionicons name="refresh-outline" size={24} color="#0a7ea4" />
         </TouchableOpacity>
       </View>
-
 
       <KeyboardAvoidingView
         style={styles.container}
@@ -342,7 +316,6 @@ export default function ChatScreen() {
             }
           />
 
-
           <View style={styles.inputWrapper}>
             <View
               style={[
@@ -363,7 +336,6 @@ export default function ChatScreen() {
                 />
               </TouchableOpacity>
 
-
               {/* Camera Button */}
               <TouchableOpacity
                 onPress={openCamera}
@@ -377,7 +349,6 @@ export default function ChatScreen() {
                 />
               </TouchableOpacity>
 
-
               <TextInput
                 style={styles.textInput}
                 placeholder={
@@ -388,7 +359,6 @@ export default function ChatScreen() {
                 onChangeText={setInputText}
                 editable={!isRecording}
               />
-
 
               {inputText.length > 0 ? (
                 <TouchableOpacity
@@ -420,7 +390,6 @@ export default function ChatScreen() {
     </SafeAreaView>
   );
 }
-
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#fff" },
@@ -457,7 +426,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
 
-
   // --- SHARED BUBBLE STYLES ---
   messageBubble: {
     padding: 14,
@@ -479,7 +447,6 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 1,
   },
-
 
   userText: { color: "white", fontSize: 15, fontWeight: "500" },
   botText: { color: "black", fontSize: 15 },
@@ -510,7 +477,7 @@ const styles = StyleSheet.create({
   inputContainerRecording: { borderColor: "red" },
   textInput: { flex: 1, fontSize: 16, color: "#000", paddingHorizontal: 10 },
   iconButton: { padding: 6, justifyContent: "center", alignItems: "center" },
- 
+
   // --- TYPING INDICATOR STYLES ---
   typingContainer: {
     width: "100%",
@@ -534,4 +501,3 @@ const styles = StyleSheet.create({
     marginHorizontal: 3,
   },
 });
-

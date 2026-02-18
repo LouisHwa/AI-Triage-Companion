@@ -38,7 +38,7 @@ def create_refferal_entry(tool_context: ToolContext):
             "validatedAt":"",
             "validatedBy":"",
             "validatedNotes":"",
-            "monitor_status":"ongoing",
+            "monitor_status":"MONITORING",
         }
         update_time, doc_ref = db.collection("referrals").add(referral_data)
 

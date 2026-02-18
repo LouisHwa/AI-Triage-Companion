@@ -3,7 +3,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   FlatList,
-  View,
   SafeAreaView,
   Alert,
   ActivityIndicator,
@@ -19,7 +18,8 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 
 // ⚠️ CHANGE TO YOUR API URL
-const API_URL = "http://192.168.1.35:8000/api/geo/nearby";
+const API_URL =
+  "https://adultly-peckiest-kourtney.ngrok-free.dev/api/geo/nearby";
 
 interface MedicalFacility {
   id: string;
@@ -39,12 +39,18 @@ type FilterType = "ALL" | "Pharmacy" | "Clinic" | "Hospital";
 
 export default function LocationScreen() {
   const [facilities, setFacilities] = useState<MedicalFacility[]>([]);
-  const [filteredFacilities, setFilteredFacilities] = useState<MedicalFacility[]>([]);
-  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [filteredFacilities, setFilteredFacilities] = useState<
+    MedicalFacility[]
+  >([]);
+  const [userLocation, setUserLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<FilterType>("ALL");
   const [refreshing, setRefreshing] = useState(false);
-  const [locationPermissionDenied, setLocationPermissionDenied] = useState(false);
+  const [locationPermissionDenied, setLocationPermissionDenied] =
+    useState(false);
 
   useEffect(() => {
     requestLocationAndFetch();
@@ -55,13 +61,21 @@ export default function LocationScreen() {
   }, [selectedFilter, facilities]);
 
   // Haversine formula to calculate distance between two coordinates
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const calculateDistance = (
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number,
+  ): number => {
     const R = 6371; // Earth's radius in km
     const dLat = toRad(lat2 - lat1);
     const dLon = toRad(lon2 - lon1);
     const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      Math.cos(toRad(lat1)) *
+        Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   };
@@ -83,7 +97,7 @@ export default function LocationScreen() {
         Alert.alert(
           "Location Permission Denied",
           "Please enable location access in your device settings to find nearby medical facilities.",
-          [{ text: "OK" }]
+          [{ text: "OK" }],
         );
         setIsLoading(false);
         return;
@@ -138,17 +152,22 @@ export default function LocationScreen() {
           latitude,
           longitude,
           facility.latitude,
-          facility.longitude
+          facility.longitude,
         ),
       }));
 
       // Sort by distance (closest first)
-      facilitiesWithDistance.sort((a, b) => (a.calculatedDistance || 0) - (b.calculatedDistance || 0));
+      facilitiesWithDistance.sort(
+        (a, b) => (a.calculatedDistance || 0) - (b.calculatedDistance || 0),
+      );
 
       setFacilities(facilitiesWithDistance);
     } catch (error) {
       console.error("Fetch error:", error);
-      Alert.alert("Error", "Failed to load nearby facilities. Please try again.");
+      Alert.alert(
+        "Error",
+        "Failed to load nearby facilities. Please try again.",
+      );
     }
   };
 
@@ -156,7 +175,11 @@ export default function LocationScreen() {
     if (selectedFilter === "ALL") {
       setFilteredFacilities(facilities);
     } else {
-      setFilteredFacilities(facilities.filter((f: MedicalFacility) => f.place_type === selectedFilter));
+      setFilteredFacilities(
+        facilities.filter(
+          (f: MedicalFacility) => f.place_type === selectedFilter,
+        ),
+      );
     }
   };
 
@@ -169,7 +192,10 @@ export default function LocationScreen() {
   const openDirections = (facility: MedicalFacility) => {
     const url = `https://www.google.com/maps/dir/?api=1&destination_place_id=${facility.id}&destination=${encodeURIComponent(facility.name)}`;
     Linking.openURL(url).catch((err) => {
-      Alert.alert("Error", "Could not open Google Maps. Please make sure it's installed.");
+      Alert.alert(
+        "Error",
+        "Could not open Google Maps. Please make sure it's installed.",
+      );
       console.error(err);
     });
   };
@@ -212,60 +238,88 @@ export default function LocationScreen() {
 
   const getCategoryCount = (type: FilterType): number => {
     if (type === "ALL") return facilities.length;
-    return facilities.filter((f: MedicalFacility) => f.place_type === type).length;
+    return facilities.filter((f: MedicalFacility) => f.place_type === type)
+      .length;
   };
 
   const renderFacilityItem = ({ item }: { item: MedicalFacility }) => (
-    <View style={styles.facilityCard}>
-      <View style={styles.facilityHeader}>
-        <View style={styles.facilityTitleRow}>
-          <View style={[styles.typeIcon, { backgroundColor: getTypeColor(item.place_type) }]}>
-            <Ionicons name={getTypeIcon(item.place_type) as any} size={20} color="#fff" />
-          </View>
-          <View style={styles.facilityInfo}>
+    <ThemedView style={styles.facilityCard}>
+      <ThemedView style={styles.facilityHeader}>
+        <ThemedView style={styles.facilityTitleRow}>
+          <ThemedView
+            style={[
+              styles.typeIcon,
+              { backgroundColor: getTypeColor(item.place_type) },
+            ]}
+          >
+            <Ionicons
+              name={getTypeIcon(item.place_type) as any}
+              size={20}
+              color="#fff"
+            />
+          </ThemedView>
+          <ThemedView style={styles.facilityInfo}>
             <ThemedText style={styles.facilityName} numberOfLines={2}>
               {item.name}
             </ThemedText>
-            <View style={styles.facilityMeta}>
-              <View style={styles.ratingContainer}>
+            <ThemedView style={styles.facilityMeta}>
+              <ThemedView style={styles.ratingContainer}>
                 <Ionicons name="star" size={14} color="#FFB300" />
                 <ThemedText style={styles.ratingText}>
-                  {item.rating.toFixed(1)} ({item.user_ratings_total})
+                  {item.rating?.toFixed(1)} ({item.user_ratings_total})
                 </ThemedText>
-              </View>
-              <View style={styles.distanceContainer}>
+              </ThemedView>
+              <ThemedView style={styles.distanceContainer}>
                 <Ionicons name="navigate" size={14} color="#666" />
                 <ThemedText style={styles.distanceText}>
                   {item.calculatedDistance?.toFixed(2)} km
                 </ThemedText>
-              </View>
-            </View>
-          </View>
-        </View>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.open_now) }]}>
-          <ThemedText style={styles.statusText}>{getStatusText(item.open_now)}</ThemedText>
-        </View>
-      </View>
+              </ThemedView>
+            </ThemedView>
+          </ThemedView>
+        </ThemedView>
+        <ThemedView
+          style={[
+            styles.statusBadge,
+            { backgroundColor: getStatusColor(item.open_now) },
+          ]}
+        >
+          <ThemedText style={styles.statusText}>
+            {getStatusText(item.open_now)}
+          </ThemedText>
+        </ThemedView>
+      </ThemedView>
 
       <ThemedText style={styles.facilityAddress} numberOfLines={2}>
         {item.address}
       </ThemedText>
 
-      <TouchableOpacity style={styles.directionsButton} onPress={() => openDirections(item)}>
+      <TouchableOpacity
+        style={styles.directionsButton}
+        onPress={() => openDirections(item)}
+      >
         <Ionicons name="navigate-outline" size={20} color="#fff" />
-        <ThemedText style={styles.directionsButtonText}>Get Directions</ThemedText>
+        <ThemedText style={styles.directionsButtonText}>
+          Get Directions
+        </ThemedText>
       </TouchableOpacity>
-    </View>
+    </ThemedView>
   );
 
   const renderFilterButton = (type: FilterType) => (
     <TouchableOpacity
       key={type}
-      style={[styles.filterButton, selectedFilter === type && styles.filterButtonActive]}
+      style={[
+        styles.filterButton,
+        selectedFilter === type && styles.filterButtonActive,
+      ]}
       onPress={() => setSelectedFilter(type)}
     >
       <ThemedText
-        style={[styles.filterButtonText, selectedFilter === type && styles.filterButtonTextActive]}
+        style={[
+          styles.filterButtonText,
+          selectedFilter === type && styles.filterButtonTextActive,
+        ]}
       >
         {type} ({getCategoryCount(type)})
       </ThemedText>
@@ -275,16 +329,22 @@ export default function LocationScreen() {
   if (locationPermissionDenied) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.errorContainer}>
+        <ThemedView style={styles.errorContainer}>
           <Ionicons name="location-outline" size={80} color="#ccc" />
-          <ThemedText style={styles.errorTitle}>Location Access Required</ThemedText>
-          <ThemedText style={styles.errorMessage}>
-            Please enable location access in your device settings to find nearby medical facilities.
+          <ThemedText style={styles.errorTitle}>
+            Location Access Required
           </ThemedText>
-          <TouchableOpacity style={styles.retryButton} onPress={requestLocationAndFetch}>
+          <ThemedText style={styles.errorMessage}>
+            Please enable location access in your device settings to find nearby
+            medical facilities.
+          </ThemedText>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={requestLocationAndFetch}
+          >
             <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
           </TouchableOpacity>
-        </View>
+        </ThemedView>
       </SafeAreaView>
     );
   }
@@ -293,34 +353,44 @@ export default function LocationScreen() {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
-      <View style={styles.headerBar}>
-        <ThemedText style={styles.headerTitle}>Nearby Medical Facilities</ThemedText>
-        <TouchableOpacity onPress={onRefresh} style={styles.refreshButton} disabled={isLoading}>
+      <ThemedView style={styles.headerBar}>
+        <ThemedText style={styles.headerTitle}>
+          Nearby Medical Facilities
+        </ThemedText>
+        <TouchableOpacity
+          onPress={onRefresh}
+          style={styles.refreshButton}
+          disabled={isLoading}
+        >
           <Ionicons
             name="reload-outline"
             size={24}
             color={isLoading ? "#ccc" : "#0a7ea4"}
           />
         </TouchableOpacity>
-      </View>
+      </ThemedView>
 
       {isLoading && !refreshing ? (
-        <View style={styles.loadingContainer}>
+        <ThemedView style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#0a7ea4" />
-          <ThemedText style={styles.loadingText}>Finding nearby facilities...</ThemedText>
-        </View>
+          <ThemedText style={styles.loadingText}>
+            Finding nearby facilities...
+          </ThemedText>
+        </ThemedView>
       ) : (
         <>
-          <View style={styles.filterContainer}>
+          <ThemedView style={styles.filterContainer}>
             <FlatList
               horizontal
               showsHorizontalScrollIndicator={false}
               data={["ALL", "Pharmacy", "Clinic", "Hospital"] as FilterType[]}
-              renderItem={({ item }: { item: FilterType }) => renderFilterButton(item)}
+              renderItem={({ item }: { item: FilterType }) =>
+                renderFilterButton(item)
+              }
               keyExtractor={(item: FilterType) => item}
               contentContainerStyle={styles.filterList}
             />
-          </View>
+          </ThemedView>
 
           <FlatList
             data={filteredFacilities}
@@ -337,15 +407,17 @@ export default function LocationScreen() {
               />
             }
             ListEmptyComponent={
-              <View style={styles.emptyContainer}>
+              <ThemedView style={styles.emptyContainer}>
                 <Ionicons name="search-outline" size={60} color="#ccc" />
                 <ThemedText style={styles.emptyText}>
-                  No {selectedFilter === "ALL" ? "" : selectedFilter.toLowerCase()} facilities found nearby
+                  No{" "}
+                  {selectedFilter === "ALL" ? "" : selectedFilter.toLowerCase()}{" "}
+                  facilities found nearby
                 </ThemedText>
                 <ThemedText style={styles.emptySubtext}>
                   Try adjusting your filters or pull down to refresh
                 </ThemedText>
-              </View>
+              </ThemedView>
             }
           />
         </>
@@ -360,8 +432,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8f9fa",
   },
   headerBar: {
-    paddingTop: Platform.OS === "android" ? (StatusBar.currentHeight || 0) + 10 : 10,
-    height: Platform.OS === "android" ? (StatusBar.currentHeight || 0) + 60 : 60,
+    paddingTop:
+      Platform.OS === "android" ? (StatusBar.currentHeight || 0) + 10 : 10,
+    height:
+      Platform.OS === "android" ? (StatusBar.currentHeight || 0) + 60 : 60,
     backgroundColor: "#fff",
     justifyContent: "center",
     alignItems: "center",

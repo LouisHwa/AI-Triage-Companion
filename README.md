@@ -15,7 +15,7 @@ open cmd and
 
 1. npm install -g expo-cli (in global cmd)
 2. cd mobile
-3. npx expo install @expo/vector-icons expo-image-picker expo-av
+3. npx expo install @expo/vector-icons expo-image-picker expo-av expo-location
 4. Go chat.tsx, change line 23 to your ipv4 address
 5. npx expo start -c --tunnel
 6. Download Expo Go app in your mobile installer
