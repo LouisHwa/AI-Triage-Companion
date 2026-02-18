@@ -20,8 +20,11 @@ import { Audio } from "expo-av";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 
+import { useRoute } from "@react-navigation/native";
+
 // ⚠️ CHANGE TO YOUR IP
-const API_BASE_URL = "https://adultly-peckiest-kourtney.ngrok-free.dev/chat";
+const API_BASE_URL = "http://192.168.0.160:8000/chat";
+//const API_BASE_URL = "https://adultly-peckiest-kourtney.ngrok-free.dev/chat";
 
 // --- Typewriter Component ---
 const TypewriterText = memo(({ text, style }: { text: string; style: any }) => {
@@ -104,6 +107,49 @@ export default function ChatScreen() {
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
+
+  const route = useRoute();
+  const { mode, referralId } = (route.params as any)|| {}; // Get params
+
+  const initiateFollowUp = async (id: string) => {
+    setIsLoading(true);
+    
+    const formData = new FormData();
+    formData.append("referral_id", id); // Send the ID
+    // No message needed; backend handles the trigger
+    
+    try {
+      const response = await fetch(API_BASE_URL, {
+        method: "POST",
+        body: formData,
+        headers: { 
+          "Accept": "application/json",
+          "ngrok-skip-browser-warning": "true",
+        },
+      });
+      const data = await response.json();
+      
+      // Add Bot's opening line ("Hi, I see you were treated for...")
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        text: data.reply,
+        sender: 'bot',
+        hasText: true
+      }]);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  useEffect(() => {
+    if (mode === 'follow_up' && referralId) {
+      // Send a "blank" message with the ID to wake up the agent
+      // The backend will see the ID and inject the system trigger
+      initiateFollowUp(referralId);
+    }
+  }, [mode, referralId]);
 
   useEffect(() => {
     (async () => {
