@@ -1,87 +1,3 @@
-/*
-Create a cases tab, to display the user's refferal cases from the database.
-
-api /user/{user_id}/referrals
-- The api accepts 'user_id', for now the user id will be hardcoded as "BdLcWMFmHjiPghRE7EZW". Make the userID the mock data through an abstraction layer, so when the backend is ready, we just swap the data source without changing the UI.
-- The api outputs an array with the referral information below: 
-    [
-        {
-            "triageData": [
-            {
-                "absent": [
-                "blisters",
-                "fever",
-                "trouble_breathing",
-                "trouble_swallowing",
-                "stiff_neck",
-                "sudden_onset",
-                "tonsillar_exudate"
-                ],
-                "symptoms": [
-                "flu_symptoms",
-                "itchy_throat",
-                "dry_throat",
-                "sore_throat"
-                ],
-                "vitals": {
-                "age": 30
-                },
-                "recommendation": "Visit a pharmacy for symptom relief. You may ask for lozenges or pain relievers (like ibuprofen or paracetamol) to help with the soreness. Since you have flu symptoms, stay hydrated and rest. A rapid antigen test can be considered to rule out other causes, but antibiotics are likely not needed.",
-                "stage": "Stage 2 (Pharmacy)",
-                "reasoning": "Patient has a Centor Score of -1 (Age 30, Flu present, No fever, Gradual onset, No exudate), indicating a viral cause is highly likely. However, the reported pain level is 5/10, which categorizes the severity as Stage 2. Symptomatic relief is the priority.",
-                "red_flags": []
-            }
-            ],
-            "validatedAt": "2026-02-16T17:29:21.422000+00:00",
-            "userID": "BdLcWMFmHjiPghRE7EZW",
-            "createdAt": "2026-02-16T16:51:46.515000+00:00",
-            "validatedNotes": "Agreed with Stage 2 assessment. Patient should monitor temp daily.",
-            "status": "APPROVED",
-            "validatedBy": "Dr. Louis Hwa",
-            "monitor_status": "ongoing",
-            "id": "T2VcUuasTxumalxpLSJ1"
-        },
-        {
-            "triageData": [
-            {
-                "absent": [
-                "neck_stiffness",
-                "trouble_swallowing",
-                "swollen_nodes",
-                "tonsillar_exudate",
-                "fever",
-                "trouble_breathing"
-                ],
-                "symptoms": [
-                "runny_nose",
-                "itchy_throat",
-                "sore_throat",
-                "dry_throat"
-                ],
-                "vitals": {
-                "age": 21
-                },
-                "recommendation": "I recommend visiting a pharmacy for symptom relief. You can ask for lozenges or pain relievers (like paracetamol or ibuprofen) to help with the throat pain, and perhaps a decongestant for your runny nose. It is also a good idea to take a rapid antigen test to rule out COVID-19. If symptoms persist beyond a few more days or get worse, please see a doctor.",
-                "stage": "Stage 2 (Pharmacy)",
-                "reasoning": "Your Modified Centor Score is low (-1), indicating a low probability of a bacterial infection (like strep throat). It is most likely viral given the runny nose and gradual onset. However, your reported pain level (4/10) places you in **Stage 2 (Pharmacy)** severity according to our protocol, meaning you may require over-the-counter medication to manage the discomfort while your body recovers.",
-                "red_flags": []
-            }
-            ],
-            "validatedAt": "2026-02-16T18:15:23.780000+00:00",
-            "userID": "BdLcWMFmHjiPghRE7EZW",
-            "createdAt": "2026-02-16T18:09:17.459000+00:00",
-            "validatedNotes": "Accurate",
-            "status": "APPROVED",
-            "validatedBy": "Dr Ong",
-            "monitor_status": "ongoing",
-            "id": "p5jmDKI3QTv2Ify6sZe3"
-        }
-    ]
-
-    - Create a frontend design that displays user's referral document and show the status, and able to click "View Details" to see the notes. 
-    - Sort by the latest to oldest, top down arrangement.
-*/
-
 import React, { useEffect, useState } from "react";
 import {
   StyleSheet,
@@ -89,67 +5,141 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   View,
+  SafeAreaView,
+  StatusBar,
+  Platform,
+  RefreshControl,
+  Alert,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 
-// --- 1. DATA LAYER (Service Abstraction) ---
-// We keep the User ID mocked as requested
+// ⚠️ CHANGE TO YOUR API URL
+const API_BASE_URL = "https://intervarsity-apolitically-lilith.ngrok-free.dev";
+
+// ⚠️ CHANGE THIS WHEN BACKEND AUTH IS READY
 const MOCK_USER_ID = "BdLcWMFmHjiPghRE7EZW";
 
-// The fixed ngrok URL
-const API_BASE_URL = "https://adultly-peckiest-kourtney.ngrok-free.dev";
+// --- TYPE DEFINITIONS ---
+interface TriageData {
+  absent: string[];
+  symptoms: string[];
+  vitals: {
+    age: number;
+  };
+  recommendation: string;
+  stage: string;
+  reasoning: string;
+  red_flags: string[];
+}
 
-const fetchReferrals = async (userId: string) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/user/${userId}/referrals`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        // This header is often required to bypass the ngrok free-tier warning page
-        "ngrok-skip-browser-warning": "true",
-      },
-    });
+interface Referral {
+  id: string;
+  triageData: TriageData[];
+  validatedAt: string;
+  userID: string;
+  createdAt: string;
+  validatedNotes: string;
+  status: "APPROVED" | "PENDING" | "REJECTED";
+  validatedBy: string;
+  monitor_status: string;
+  last_check_in?: string;
+}
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+// --- DATA SERVICE LAYER (ABSTRACTION) ---
+class ReferralService {
+  private static baseUrl = API_BASE_URL;
+  private static userId = MOCK_USER_ID;
+
+  // Easy to swap data source later - just change this method
+  static async fetchReferrals(): Promise<Referral[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/user/${this.userId}/referrals`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true", // For ngrok
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("ReferralService error:", error);
+      throw error;
     }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error("API Connection Error:", error);
-    // Return empty array so the UI doesn't crash, just shows nothing
-    return [];
   }
-};
 
-// --- 2. UI COMPONENTS ---
+  // Helper to update base URL (when switching between local/ngrok)
+  static setBaseUrl(url: string) {
+    this.baseUrl = url;
+  }
+
+  // Helper to update user ID (when auth is implemented)
+  static setUserId(userId: string) {
+    this.userId = userId;
+  }
+}
+
+// --- UI COMPONENTS ---
 
 const StatusBadge = ({ status }: { status: string }) => {
-  const getStatusColor = () => {
+  const getStatusStyle = () => {
     switch (status) {
       case "APPROVED":
-        return "#4CAF50"; // Green
+        return { bg: "#4CAF50", icon: "checkmark-circle" as const };
       case "PENDING":
-        return "#FF9800"; // Orange
+        return { bg: "#FF9800", icon: "time-outline" as const };
       case "REJECTED":
-        return "#F44336"; // Red
+        return { bg: "#F44336", icon: "close-circle" as const };
       default:
-        return "#808080";
+        return { bg: "#808080", icon: "help-circle" as const };
     }
   };
 
+  const style = getStatusStyle();
+
   return (
-    <View style={[styles.badge, { backgroundColor: getStatusColor() }]}>
-      <ThemedText style={styles.badgeText}>{status}</ThemedText>
+    <View style={[styles.statusBadge, { backgroundColor: style.bg }]}>
+      <Ionicons name={style.icon} size={14} color="#fff" />
+      <ThemedText style={styles.statusText}>{status}</ThemedText>
     </View>
   );
 };
 
-const ReferralCard = ({ item }: { item: any }) => {
+const MonitorStatusIndicator = ({ status }: { status: string }) => {
+  const getColor = () => {
+    switch (status.toLowerCase()) {
+      case "ongoing":
+        return "#2196F3";
+      case "completed":
+        return "#4CAF50";
+      case "attention_needed":
+        return "#FF5722";
+      default:
+        return "#9E9E9E";
+    }
+  };
+
+  return (
+    <View style={styles.monitorStatusRow}>
+      <View style={[styles.monitorDot, { backgroundColor: getColor() }]} />
+      <ThemedText style={styles.monitorText}>
+        {status.replace("_", " ").toUpperCase()}
+      </ThemedText>
+    </View>
+  );
+};
+
+const ReferralCard = ({ item }: { item: Referral }) => {
   const [expanded, setExpanded] = useState(false);
   const triage = item.triageData[0] || {};
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-GB", {
       day: "numeric",
@@ -160,25 +150,41 @@ const ReferralCard = ({ item }: { item: any }) => {
     });
   };
 
+  const getStageColor = (stage: string): string => {
+    if (stage.includes("Stage 1")) return "#4CAF50";
+    if (stage.includes("Stage 2")) return "#FF9800";
+    if (stage.includes("Stage 3")) return "#F44336";
+    if (stage.includes("Stage 4")) return "#9C27B0";
+    return "#0a7ea4";
+  };
+
   return (
     <View style={styles.cardContainer}>
       {/* Card Header */}
       <View style={styles.cardHeader}>
-        <View>
-          <ThemedText type="defaultSemiBold" style={{ fontSize: 16 }}>
-            {triage.stage || "Triage Case"}
-          </ThemedText>
-          <ThemedText style={styles.dateText}>
-            Created At: {formatDate(item.createdAt)}
-          </ThemedText>
-          <ThemedText style={styles.dateText}>
-            Last Updated: {formatDate(item.last_check_in)}
-          </ThemedText>
+        <View style={styles.cardHeaderLeft}>
+          <View style={[styles.stageIndicator, { backgroundColor: getStageColor(triage.stage) }]}>
+            <Ionicons name="medical" size={20} color="#fff" />
+          </View>
+          <View style={styles.cardHeaderInfo}>
+            <ThemedText style={styles.stageTitle}>
+              {triage.stage || "Triage Case"}
+            </ThemedText>
+            <View style={styles.dateRow}>
+              <Ionicons name="calendar-outline" size={12} color="#666" />
+              <ThemedText style={styles.dateText}>
+                {formatDate(item.createdAt)}
+              </ThemedText>
+            </View>
+          </View>
         </View>
         <StatusBadge status={item.status} />
       </View>
 
-      {/* Basic Summary */}
+      {/* Monitor Status */}
+      <MonitorStatusIndicator status={item.monitor_status} />
+
+      {/* Quick Summary */}
       <View style={styles.summarySection}>
         <ThemedText
           numberOfLines={expanded ? undefined : 2}
@@ -190,56 +196,122 @@ const ReferralCard = ({ item }: { item: any }) => {
 
       {/* Expanded Details */}
       {expanded && (
-        <View style={styles.detailsContainer}>
+        <View style={styles.expandedContent}>
           <View style={styles.divider} />
 
-          <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-            Doctor&apos;s Notes ({item.validatedBy})
-          </ThemedText>
-          <ThemedText style={styles.detailText}>
-            {item.validatedNotes}
-          </ThemedText>
+          {/* Validated By Section */}
+          <View style={styles.validatedSection}>
+            <View style={styles.doctorHeader}>
+              <Ionicons name="person-circle-outline" size={24} color="#0a7ea4" />
+              <View style={styles.doctorInfo}>
+                <ThemedText style={styles.doctorLabel}>Validated By</ThemedText>
+                <ThemedText style={styles.doctorName}>{item.validatedBy}</ThemedText>
+              </View>
+            </View>
+            <View style={styles.dateRow}>
+              <Ionicons name="time-outline" size={12} color="#666" />
+              <ThemedText style={styles.dateText}>
+                {formatDate(item.validatedAt)}
+              </ThemedText>
+            </View>
+          </View>
 
-          <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-            Recommendation
-          </ThemedText>
-          <ThemedText style={styles.detailText}>
-            {triage.recommendation}
-          </ThemedText>
+          {/* Doctor's Notes */}
+          <View style={styles.detailSection}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="document-text-outline" size={18} color="#0a7ea4" />
+              <ThemedText style={styles.sectionTitle}>Doctor's Notes</ThemedText>
+            </View>
+            <ThemedText style={styles.detailText}>{item.validatedNotes}</ThemedText>
+          </View>
 
-          <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-            Symptoms Reported
-          </ThemedText>
-          <View style={styles.tagContainer}>
-            {triage.symptoms?.map((sym: string, idx: number) => (
-              <View key={idx} style={styles.symptomTag}>
-                <ThemedText style={styles.symptomText}>
-                  {sym.replace("_", " ")}
+          {/* Recommendation */}
+          <View style={styles.detailSection}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="checkmark-done-outline" size={18} color="#4CAF50" />
+              <ThemedText style={styles.sectionTitle}>Recommendation</ThemedText>
+            </View>
+            <ThemedText style={styles.detailText}>{triage.recommendation}</ThemedText>
+          </View>
+
+          {/* Symptoms */}
+          {triage.symptoms && triage.symptoms.length > 0 && (
+            <View style={styles.detailSection}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="fitness-outline" size={18} color="#FF9800" />
+                <ThemedText style={styles.sectionTitle}>
+                  Symptoms ({triage.symptoms.length})
                 </ThemedText>
               </View>
-            ))}
-          </View>
+              <View style={styles.tagContainer}>
+                {triage.symptoms.map((symptom: string, idx: number) => (
+                  <View key={idx} style={styles.symptomTag}>
+                    <ThemedText style={styles.symptomText}>
+                      {symptom.replace(/_/g, " ")}
+                    </ThemedText>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Red Flags (if any) */}
+          {triage.red_flags && triage.red_flags.length > 0 && (
+            <View style={styles.detailSection}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="warning-outline" size={18} color="#F44336" />
+                <ThemedText style={[styles.sectionTitle, { color: "#F44336" }]}>
+                  Red Flags
+                </ThemedText>
+              </View>
+              <View style={styles.tagContainer}>
+                {triage.red_flags.map((flag: string, idx: number) => (
+                  <View key={idx} style={[styles.symptomTag, styles.redFlagTag]}>
+                    <ThemedText style={styles.redFlagText}>
+                      {flag.replace(/_/g, " ")}
+                    </ThemedText>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Last Check-in (if available) */}
+          {item.last_check_in && (
+            <View style={styles.checkInSection}>
+              <Ionicons name="pulse-outline" size={16} color="#666" />
+              <ThemedText style={styles.checkInText}>
+                Last check-in: {formatDate(item.last_check_in)}
+              </ThemedText>
+            </View>
+          )}
         </View>
       )}
 
       {/* Toggle Button */}
       <TouchableOpacity
-        style={styles.actionButton}
+        style={styles.toggleButton}
         onPress={() => setExpanded(!expanded)}
+        activeOpacity={0.7}
       >
-        <ThemedText style={styles.actionButtonText}>
+        <ThemedText style={styles.toggleButtonText}>
           {expanded ? "Hide Details" : "View Details"}
         </ThemedText>
+        <Ionicons
+          name={expanded ? "chevron-up" : "chevron-down"}
+          size={18}
+          color="#0a7ea4"
+        />
       </TouchableOpacity>
     </View>
   );
 };
 
-// --- 3. MAIN SCREEN ---
-
-export default function ReferralScreen() {
-  const [referrals, setReferrals] = useState<any[]>([]);
+// --- MAIN SCREEN ---
+export default function CasesScreen() {
+  const [referrals, setReferrals] = useState<Referral[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadReferrals();
@@ -248,79 +320,179 @@ export default function ReferralScreen() {
   const loadReferrals = async () => {
     setLoading(true);
     try {
-      const data: any = await fetchReferrals(MOCK_USER_ID);
+      const data = await ReferralService.fetchReferrals();
       // Sort: Latest createdAt first
-      const sortedData = data.sort(
-        (a: any, b: any) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      const sortedData = [...data].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
       setReferrals(sortedData);
     } catch (error) {
-      console.error("Failed to fetch referrals", error);
+      console.error("Failed to fetch referrals:", error);
+      Alert.alert(
+        "Connection Error",
+        "Could not load your referrals. Please check your connection and try again."
+      );
     } finally {
       setLoading(false);
     }
   };
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadReferrals();
+    setRefreshing(false);
+  };
+
+  const renderEmptyState = () => (
+    <View style={styles.emptyContainer}>
+      <Ionicons name="folder-open-outline" size={80} color="#ccc" />
+      <ThemedText style={styles.emptyTitle}>No Referrals Yet</ThemedText>
+      <ThemedText style={styles.emptySubtext}>
+        Your triage cases will appear here once you complete an assessment
+      </ThemedText>
+    </View>
+  );
+
   return (
-    <ThemedView style={styles.container}>
-      <View style={styles.header}>
-        <ThemedText type="title">My Referrals</ThemedText>
-        <ThemedText style={styles.subHeader}>
-          History of your triage cases
-        </ThemedText>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+
+      {/* Header */}
+      <View style={styles.headerBar}>
+        <View>
+          <ThemedText style={styles.headerTitle}>My Referrals</ThemedText>
+          <ThemedText style={styles.headerSubtitle}>
+            {referrals.length} {referrals.length === 1 ? "case" : "cases"}
+          </ThemedText>
+        </View>
+        <TouchableOpacity
+          onPress={onRefresh}
+          style={styles.refreshButton}
+          disabled={loading || refreshing}
+        >
+          <Ionicons
+            name="reload-outline"
+            size={24}
+            color={loading || refreshing ? "#ccc" : "#0a7ea4"}
+          />
+        </TouchableOpacity>
       </View>
 
-      {loading ? (
-        <View style={styles.center}>
+      {/* Content */}
+      {loading && !refreshing ? (
+        <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#0a7ea4" />
+          <ThemedText style={styles.loadingText}>Loading your cases...</ThemedText>
         </View>
       ) : (
         <FlatList
           data={referrals}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <ReferralCard item={item} />}
-          contentContainerStyle={styles.listContent}
-          refreshing={loading}
-          onRefresh={loadReferrals}
+          renderItem={({ item }: { item: Referral }) => <ReferralCard item={item} />}
+          keyExtractor={(item: Referral) => item.id}
+          contentContainerStyle={[
+            styles.listContent,
+            referrals.length === 0 && styles.emptyListContent,
+          ]}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={["#0a7ea4"]}
+              tintColor="#0a7ea4"
+            />
+          }
+          ListEmptyComponent={renderEmptyState}
         />
       )}
-    </ThemedView>
+    </SafeAreaView>
   );
 }
 
-// --- 4. STYLES ---
-
+// --- STYLES ---
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
+    backgroundColor: "#f8f9fa",
   },
-  center: {
+  headerBar: {
+    paddingTop: Platform.OS === "android" ? (StatusBar.currentHeight || 0) + 10 : 10,
+    height: Platform.OS === "android" ? (StatusBar.currentHeight || 0) + 70 : 70,
+    backgroundColor: "#fff",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#333",
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: "#666",
+    marginTop: 2,
+  },
+  refreshButton: {
+    padding: 8,
+  },
+  loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 60, // Adjust for status bar
-    paddingBottom: 20,
-  },
-  subHeader: {
-    opacity: 0.6,
-    marginTop: 4,
+  loadingText: {
+    marginTop: 12,
+    fontSize: 15,
+    color: "#666",
   },
   listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 40,
+    padding: 16,
+    paddingBottom: 30,
   },
+  emptyListContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+  },
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#999",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: "#bbb",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+
   // Card Styles
   cardContainer: {
-    backgroundColor: "rgba(150, 150, 150, 0.1)", // Subtle background for contrast
-    borderRadius: 12,
+    backgroundColor: "#fff",
+    borderRadius: 16,
     padding: 16,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "rgba(150, 150, 150, 0.2)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   cardHeader: {
     flexDirection: "row",
@@ -328,76 +500,183 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     marginBottom: 12,
   },
+  cardHeaderLeft: {
+    flexDirection: "row",
+    flex: 1,
+    marginRight: 12,
+  },
+  stageIndicator: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  cardHeaderInfo: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  stageTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#333",
+    marginBottom: 4,
+  },
+  dateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
   dateText: {
     fontSize: 12,
-    opacity: 0.6,
-    marginTop: 4,
+    color: "#666",
   },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 4,
   },
-  badgeText: {
+  statusText: {
     color: "#fff",
-    fontSize: 10,
-    fontWeight: "bold",
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "uppercase",
+  },
+  monitorStatusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+    gap: 6,
+  },
+  monitorDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  monitorText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#666",
   },
   summarySection: {
-    marginBottom: 12,
+    marginBottom: 16,
   },
   summaryText: {
     fontSize: 14,
     lineHeight: 20,
-    opacity: 0.8,
+    color: "#555",
   },
-  // Expanded Details
-  detailsContainer: {
+
+  // Expanded Content
+  expandedContent: {
     marginTop: 8,
   },
   divider: {
     height: 1,
-    backgroundColor: "rgba(150, 150, 150, 0.2)",
-    marginBottom: 12,
+    backgroundColor: "#f0f0f0",
+    marginBottom: 16,
+  },
+  validatedSection: {
+    backgroundColor: "#f8f9fa",
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 16,
+  },
+  doctorHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    gap: 10,
+  },
+  doctorInfo: {
+    flex: 1,
+  },
+  doctorLabel: {
+    fontSize: 11,
+    color: "#666",
+    textTransform: "uppercase",
+    fontWeight: "600",
+  },
+  doctorName: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#0a7ea4",
+    marginTop: 2,
+  },
+  detailSection: {
+    marginBottom: 16,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    gap: 8,
   },
   sectionTitle: {
     fontSize: 14,
-    marginBottom: 4,
-    marginTop: 8,
+    fontWeight: "700",
     color: "#0a7ea4",
   },
   detailText: {
     fontSize: 14,
     lineHeight: 20,
-    opacity: 0.9,
-    marginBottom: 8,
+    color: "#555",
   },
   tagContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
     marginTop: 4,
-    marginBottom: 8,
   },
   symptomTag: {
-    backgroundColor: "rgba(10, 126, 164, 0.15)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    backgroundColor: "#E3F2FD",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
   symptomText: {
     fontSize: 12,
     color: "#0a7ea4",
+    fontWeight: "600",
     textTransform: "capitalize",
   },
-  // Action Button
-  actionButton: {
-    marginTop: 8,
-    alignSelf: "flex-start",
+  redFlagTag: {
+    backgroundColor: "#FFEBEE",
   },
-  actionButtonText: {
-    color: "#0a7ea4", // Primary Color
+  redFlagText: {
+    fontSize: 12,
+    color: "#F44336",
     fontWeight: "600",
+    textTransform: "capitalize",
+  },
+  checkInSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f8f9fa",
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 8,
+    gap: 6,
+  },
+  checkInText: {
+    fontSize: 12,
+    color: "#666",
+  },
+  toggleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 12,
+    paddingVertical: 10,
+    gap: 6,
+  },
+  toggleButtonText: {
     fontSize: 14,
+    fontWeight: "600",
+    color: "#0a7ea4",
   },
 });
