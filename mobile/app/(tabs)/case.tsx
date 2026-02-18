@@ -182,10 +182,6 @@ const ReferralCard = ({ item }: { item: Referral }) => {
               <ThemedText style={styles.dateText}>
                 {formatDate(item.createdAt)}
               </ThemedText>
-              <ThemedText style={styles.dateText}>
-                || Last Update:{" "}
-                {formatDate(item.last_check_in ?? item.createdAt)}
-              </ThemedText>
             </View>
           </View>
         </View>
