@@ -40,8 +40,8 @@ import {
 import { ThemedText } from "@/components/themed-text";
 
 const MOCK_USER_ID = "BdLcWMFmHjiPghRE7EZW";
-const API_BASE_URL = "http://192.168.0.160:8000";
-// const API_BASE_URL = "https://adultly-peckiest-kourtney.ngrok-free.dev";
+// const API_BASE_URL = "http://192.168.1.104:8000";
+const API_BASE_URL = "https://adultly-peckiest-kourtney.ngrok-free.dev";
 
 type Profile = {
   Name: string;
@@ -63,7 +63,9 @@ export default function ProfileScreen() {
 
   const fetchProfile = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/user/${MOCK_USER_ID}`);
+      const response = await fetch(`${API_BASE_URL}/user/${MOCK_USER_ID}`, {
+        headers: { "ngrok-skip-browser-warning": "true" },
+      });
       const data = await response.json();
 
       if (!response.ok || data.error) {
