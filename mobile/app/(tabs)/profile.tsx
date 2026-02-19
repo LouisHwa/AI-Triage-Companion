@@ -40,7 +40,7 @@ import {
 import { ThemedText } from "@/components/themed-text";
 
 const MOCK_USER_ID = "BdLcWMFmHjiPghRE7EZW";
-const API_BASE_URL = "http://19.168.0.160:8000";
+const API_BASE_URL = "http://192.168.0.160:8000";
 // const API_BASE_URL = "https://adultly-peckiest-kourtney.ngrok-free.dev";
 
 type Profile = {

@@ -57,6 +57,14 @@ class LocationRequest(BaseModel):
     longitude: float
     radius_meters: int = 5000  # Default 5km search
 
+class UserUpdate(BaseModel):
+    Name: str
+    Email: str
+    CreatedAt: str
+    Gender: str
+    Age: Optional[int] = None
+    Medical_History: str
+
 UPLOAD_DIR = "temp_uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
@@ -444,3 +452,17 @@ async def get_user(user_id: str):
         return {"error": "User not found"}
 
     return user.to_dict()
+
+@app.put("/user/{user_id}")
+async def update_user(user_id: str, user_data: UserUpdate):
+    user_ref = db.collection("user").document(user_id)
+    
+    # Check if user exists before updating
+    user = user_ref.get()
+    if not user.exists:
+        return {"error": "User not found, cannot update"}
+
+    # Push the validated dictionary into Firestore
+    user_ref.set(user_data.model_dump(), merge=True)
+    
+    return {"status": "success", "message": "Profile updated"}
