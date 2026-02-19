@@ -16,11 +16,9 @@ import { ThemedText } from "@/components/themed-text";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
-
-
-// ⚠️ CHANGE TO YOUR API URL
-const API_BASE_URL = "http://192.168.0.160:8000";
-//const API_BASE_URL = "https://adultly-peckiest-kourtney.ngrok-free.dev";
+// ⚠️ CHANGE TO YOUR API URL only
+// const API_BASE_URL = "http://192.168.0.160:8000";
+const API_BASE_URL = "https://adultly-peckiest-kourtney.ngrok-free.dev";
 
 // ⚠️ CHANGE THIS WHEN BACKEND AUTH IS READY
 const MOCK_USER_ID = "BdLcWMFmHjiPghRE7EZW";
@@ -47,7 +45,7 @@ interface Referral {
   validatedNotes: string;
   status: "APPROVED" | "PENDING" | "REJECTED";
   validatedBy: string;
-  monitor_status: string; 
+  monitor_status: string;
   last_check_in?: string;
 }
 
@@ -172,7 +170,7 @@ const ReferralCard = ({ item }: { item: Referral }) => {
     return "#0a7ea4";
   };
 
-  const monitorStatus = item.monitor_status
+  const monitorStatus = item.monitor_status;
   const navigation = useNavigation<NavigationProp>();
   return (
     <View style={styles.cardContainer}>
@@ -215,22 +213,22 @@ const ReferralCard = ({ item }: { item: Referral }) => {
         </ThemedText>
       </View>
 
-       {/* NEW FOOTER SECTION FOR MONITORING STATUS*/}
+      {/* NEW FOOTER SECTION FOR MONITORING STATUS*/}
       <View style={styles.footerContainer}>
         {/* Only show Follow Up if NOT recovered */}
-        {monitorStatus !== 'RECOVERED' && (
-           <TouchableOpacity 
-             style={styles.followUpButton}
-             onPress={() => {
-               // Navigate to Chat with context parameters
-               navigation.navigate('index', { 
-                 mode: 'follow_up',
-                 referralId: item.id 
-               });
-             }}
-           >
-             <ThemedText style={styles.followUpText}>Follow Up →</ThemedText>
-           </TouchableOpacity>
+        {monitorStatus !== "RECOVERED" && (
+          <TouchableOpacity
+            style={styles.followUpButton}
+            onPress={() => {
+              // Navigate to Chat with context parameters
+              navigation.navigate("index", {
+                mode: "follow_up",
+                referralId: item.id,
+              });
+            }}
+          >
+            <ThemedText style={styles.followUpText}>Follow Up →</ThemedText>
+          </TouchableOpacity>
         )}
       </View>
 
@@ -645,26 +643,26 @@ const styles = StyleSheet.create({
 
   //follow up button styles
   footerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    alignSelf: 'flex-end',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    alignSelf: "flex-end",
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#ffffff',
+    borderTopColor: "#ffffff",
   },
   followUpButton: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: "#E3F2FD",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#0a7ea4',
+    borderColor: "#0a7ea4",
   },
   followUpText: {
-    color: '#0a7ea4',
-    fontWeight: '700',
+    color: "#0a7ea4",
+    fontWeight: "700",
     fontSize: 12,
   },
 

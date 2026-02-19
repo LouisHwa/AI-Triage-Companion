@@ -23,6 +23,7 @@ const MAPPING = {
   "chevron.right": "chevron-right",
   "doc.fill": "description",
   "mappin.circle.fill": "location-on",
+  "person.fill": "person",
 } as IconMapping;
 
 /**

@@ -1,5 +1,9 @@
 # AI-Triage-Companion
 
+# API
+
+For all app->(tabs), all base api needs to be changed accordingly.
+
 # Server
 
 1. cd backend

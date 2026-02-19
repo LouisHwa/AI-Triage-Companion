@@ -17,8 +17,8 @@ import * as Location from "expo-location";
 
 import { ThemedText } from "@/components/themed-text";
 
-// ⚠️ CHANGE TO YOUR API URL
-const API_URL = "https://adultly-peckiest-kourtney.ngrok-free.dev";
+// ⚠️ CHANGE TO YOUR API URL, no need to add /api/geo/nearby
+const API_BASE_URL = "https://adultly-peckiest-kourtney.ngrok-free.dev";
 
 interface MedicalFacility {
   id: string;
@@ -125,7 +125,7 @@ export default function LocationScreen() {
 
   const fetchNearbyFacilities = async (latitude: number, longitude: number) => {
     try {
-      const response = await fetch(API_URL, {
+      const response = await fetch(`${API_BASE_URL}/api/geo/nearby`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

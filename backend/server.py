@@ -1,6 +1,7 @@
 import os
 import uuid
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi.encoders import jsonable_encoder
 from google.genai import types
 from dotenv import load_dotenv
 from chatbot.agent import runner, initialize_session, USER_ID, SESSION_ID
@@ -433,3 +434,13 @@ async def get_user_referrals(user_id: str):
         results.append(data)
 
     return results
+
+@app.get("/user/{user_id}")
+async def get_user(user_id: str):
+    user_ref = db.collection("user").document(user_id)
+    user = user_ref.get()
+
+    if not user.exists:
+        return {"error": "User not found"}
+
+    return user.to_dict()
