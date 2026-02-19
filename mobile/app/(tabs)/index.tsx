@@ -23,8 +23,8 @@ import { ThemedView } from "@/components/themed-view";
 import { useRoute } from "@react-navigation/native";
 
 // ⚠️ CHANGE TO YOUR IP, no need to add /chat
-// const API_BASE_URL = "http://192.168.0.160:8000";
-const API_BASE_URL = "https://adultly-peckiest-kourtney.ngrok-free.dev";
+const API_BASE_URL = "http://192.168.0.160:8000";
+// const API_BASE_URL = "https://adultly-peckiest-kourtney.ngrok-free.dev";
 
 // --- Typewriter Component ---
 const TypewriterText = memo(({ text, style }: { text: string; style: any }) => {

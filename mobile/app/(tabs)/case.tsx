@@ -17,8 +17,8 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 // ⚠️ CHANGE TO YOUR API URL only
-// const API_BASE_URL = "http://192.168.0.160:8000";
-const API_BASE_URL = "https://adultly-peckiest-kourtney.ngrok-free.dev";
+const API_BASE_URL = "http://192.168.0.160:8000";
+// const API_BASE_URL = "https://adultly-peckiest-kourtney.ngrok-free.dev";
 
 // ⚠️ CHANGE THIS WHEN BACKEND AUTH IS READY
 const MOCK_USER_ID = "BdLcWMFmHjiPghRE7EZW";
