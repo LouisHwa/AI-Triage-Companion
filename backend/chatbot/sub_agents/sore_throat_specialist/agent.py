@@ -91,52 +91,53 @@ def submit_final_triage(
 
 
 def update_patient_chart(
-    symptoms_found: List[str] = [],
-    symptoms_absent: List[str] = [],
-    vitals: Dict[str, Any] = {},
-    red_flags: List[str] = [],
-    severity_metrics: Dict[str, Any] = {},
-    clinical_reasoning: str = "",
+    active_symptoms: List[str] = [],
+    new_symptoms: List[str] = [],
+    resolved_symptoms: List[str] = [],
+    temperature: str = None,
+    pain_scale: str = None,
+    phlegm_color: str = None,
     tool_context: ToolContext = None
 ):
     """
     Updates the medical chart with new findings, scores, or red flags.
 
     Args:
-        symptoms_found: Confirmed criteria (e.g., ["fever", "tonsillar_exudate", "cough"]).
-        symptoms_absent: Denied criteria (e.g., ["swollen_nodes"]).
-        vitals: Numerical data (e.g., {"temp_c": 38.5, "age": 25}).
-        red_flags: CRITICAL signs found (e.g., ["trouble_breathing", "drooling"]).
-        severity_metrics: Data for Stage 4 (e.g., {"pain_scale": 7, "duration_days": 6, "phlegm_color": "green"}).
-        clinical_reasoning: The agent's thought process (e.g., "Visuals show high pus, overriding patient denial.").
+        active_symptoms: Confirmed criteria (e.g., ["fever", "tonsillar_exudate", "cough"]).
+        new_symptoms: Newly reported symptoms that were not previously documented (e.g., ["loss_of_taste"]).
+        resolved_symptoms: Symptoms that are no longer present (e.g., ["headache"]).
+        temperature: Temperature reading (e.g., "38.5°C").
+        pain_scale: Pain level (e.g., "7/10").
+        phlegm_color: Color of phlegm (e.g., "yellow", "green", "clear", "red").
     """
     # 1. Get existing chart or create new
     chart = tool_context.state.get("patient_chart", {
-        "symptoms": [],
-        "absent": [],
-        "vitals": {},
-        "red_flags": [],
-        "severity_metrics": {},
-        "notes": []
+        "active_symptoms": [],
+        "new_symptoms": [],
+        "resolved_symptoms": [],
+        "temperature": temperature,
+        "pain_scale": pain_scale,
+        "phlegm_color": phlegm_color,
     })
 
     # 2. Update Lists (Merge and Deduplicate)
-    chart["symptoms"] = list(set(chart["symptoms"] + symptoms_found))
-    chart["absent"] = list(set(chart["absent"] + symptoms_absent))
-    chart["red_flags"] = list(set(chart["red_flags"] + red_flags))
-    
-    # 3. Update Dictionaries (Update existing keys)
-    chart["vitals"].update(vitals)
-    chart["severity_metrics"].update(severity_metrics)
-    
-    # 4. Append Reasoning
-    if clinical_reasoning:
-        chart["notes"].append(clinical_reasoning)
+    chart["active_symptoms"] = list(set(chart["active_symptoms"] + active_symptoms))
+    chart["new_symptoms"] = list(set(chart["new_symptoms"] + new_symptoms))
+    chart["resolved_symptoms"] = list(set(chart["resolved_symptoms"] + resolved_symptoms))
 
-    # 5. Save back to state
+    #3 Remove any resolved symptoms from active and new lists
+    chart["active_symptoms"] = [sym for sym in chart["active_symptoms"] if sym not in chart["resolved_symptoms"]]
+    chart["new_symptoms"] = [sym for sym in chart["new_symptoms"] if sym not in chart["resolved_symptoms"]]
+    
+    # 3. Update String
+    chart["temperature"] = temperature or chart["temperature"]
+    chart["pain_scale"] = pain_scale or chart["pain_scale"]
+    chart["phlegm_color"] = phlegm_color or chart["phlegm_color"]
+
+    # 4. Save back to state
     tool_context.state["patient_chart"] = chart
 
-    return f"Chart Updated. Red Flags: {chart['red_flags']}. Symptoms: {chart['symptoms']}. Severity Data: {chart['severity_metrics']}."
+    return f"Chart Updated. Active Symptoms: {chart['active_symptoms']}. New Symptoms: {chart['new_symptoms']}. Resolved Symptoms: {chart['resolved_symptoms']}. Temperature: {chart['temperature']}. Pain Scale: {chart['pain_scale']}. Phlegm Color: {chart['phlegm_color']}."
 
 
 
