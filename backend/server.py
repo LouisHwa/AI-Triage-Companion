@@ -4,7 +4,7 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.encoders import jsonable_encoder
 from google.genai import types
 from dotenv import load_dotenv
-from chatbot.agent import runner, initialize_session, USER_ID, SESSION_ID
+from chatbot.agent import runner, monitoring_runner, initialize_session, USER_ID, SESSION_ID
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 from typing import List, Optional
@@ -136,7 +136,7 @@ def fetch_nearby_medical(lat: float, lng: float, radius: int, api_key: str) -> L
     return results
 
 
-async def process_with_agent(message, image_path=None):
+async def process_with_agent(message, image_path=None, active_agent=runner): #let the chat api call decide which runner to use based on the context (monitoring or triage)
     # Include image path in the message if available
     if image_path:
         message = f"{message}\n[System: Image saved at {image_path}]"
@@ -148,7 +148,7 @@ async def process_with_agent(message, image_path=None):
         parts=[types.Part(text=message)]
     )
 
-    events = runner.run_async(user_id=USER_ID, session_id=SESSION_ID, new_message=message_content)
+    events = active_agent.run_async(user_id=USER_ID, session_id=SESSION_ID, new_message=message_content)
     agent_reply = "Processing..."
     
     async for event in events:
@@ -173,22 +173,6 @@ async def chat(
     print(f"Referral ID: {referral_id}")  # ✅ Log referral ID for follow-up context
     saved_image_path = None
 
-    # Handle Text
-    if not message:
-        if file or audio:
-            message = "Analyze the input provided."
-        else:
-            message = ""
-
-    #handle refferel ID for follow-up context
-    if referral_id:
-        # We inject a system instruction to force the agent into the right context
-        system_trigger = f"SYSTEM_TRIGGER: ACTIVATE_MONITORING for Referral ID: {referral_id}"
-        if message:
-            message = f"{system_trigger}\nUser says: {message}"
-        else:
-            message = system_trigger
-
     # Handle Image - SAVE IT TO DISK
     if file:
         file_extension = file.filename.split('.')[-1] if '.' in file.filename else 'jpg'
@@ -201,13 +185,35 @@ async def chat(
             f.write(image_bytes)
         
         print(f"✅ Image saved to: {saved_image_path}")
-
+    
     # Handle Audio (if needed later)
     # ... your audio handling code ...
 
-    # Generate Response
+   
+#handle refferel ID for follow-up context
     try:
-        response = await process_with_agent(message, image_path=saved_image_path)
+        if referral_id:
+            # We inject a system instruction to force the agent into the right context
+            print(f"🔀 Routing directly to Monitoring Agent for Case: {referral_id}")
+
+            if message:
+                message = f"Referral ID: {referral_id}\nUser says: {message}"
+            else:
+                message = f"Please check my case history for referral ID: {referral_id}"
+            
+            response = await process_with_agent(message, image_path=saved_image_path, active_agent=monitoring_runner)
+        else:
+            print("🔀 Routing to Main Triage Orchestrator")
+             # Handle Text
+            if not message:
+                if file or audio:
+                    message = "Analyze the input provided."
+                else:
+                    message = ""
+
+            response = await process_with_agent(message, image_path=saved_image_path, active_agent=runner)
+        
+    # Generate Response
         return {"reply": response}
     
     except Exception as e:
@@ -302,6 +308,7 @@ async def view_referral_portal(referral_id: str):
     user_data = user_ref.get().to_dict()
     
     # Simple HTML Template (You can make this prettier)
+    #sry bro triage is gone.... 
     triage_list = data.get('triageData', [])
     triage = triage_list[0] if triage_list else {}
 
