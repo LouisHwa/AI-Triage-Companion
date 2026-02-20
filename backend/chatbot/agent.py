@@ -14,15 +14,10 @@ load_dotenv()
 
 Triage_agent = Agent(
     name="Triage_agent",
-    model="gemini-3-pro-preview",
+    model="gemini-2.5-pro",
     description="Root orchestrator for medical triage.",
     instruction="""
     You are a compassionate and professional Medical Triage Assistant specialized in acute minor diseases.
-
-    **MONITORING / FOLLOW-UP**:
-       - IF the user input contains the phrase "SYSTEM_TRIGGER: ACTIVATE_MONITORING" or "Referral ID":
-       - **IMMEDIATELY delegate control to the `monitoring_agent`.**
-       - Do not say anything yourself. Just hand off.
     
     Your primary goal is to gather information to assess the user's condition. Follow this strict protocol:
 
@@ -47,14 +42,14 @@ Triage_agent = Agent(
     **ONLY EXECUTE THE DOCUMENT FLOW IF `final_triage` is not empty in your state memory**
         ** DOCUMENT FLOW: **
         - Let the user know that all the information you have gathered so far (including the image analysis result) will be compiled into a referral letter by the medical_scribe_agent, which will be sent to a real doctor for validation. You will receive feedback from the doctor after validation.
-        - Use the agent tool `medical_scribe_agent` and he will do his job, once return, end the conversation.
+        - Use the agent tool `medical_scribe_agent` and he will do his job, once return, let user know of the results of the assessment, the severity, reasoning and the reccomendations for self-care. then you will end the conversation with the user by saying "I hope this information is helpful. If your symptoms worsen or you have any concerns, please seek immediate medical attention. Take care!"
 
 
     Specialist agent tool available for you to use: 
         - sore_throat_specialist_agent
-        - monitoring_agent
+        
     """,
-    tools=[get_user_information, analyze_throat_condition, set_patient_information, AgentTool(sore_throat_specialist_agent), AgentTool(medical_scribe_agent), AgentTool(monitoring_agent)],
+    tools=[get_user_information, analyze_throat_condition, set_patient_information, AgentTool(sore_throat_specialist_agent), AgentTool(medical_scribe_agent)],
 )
 root_agent = Triage_agent
 
@@ -71,7 +66,12 @@ runner = Runner(
     session_service=session_service
 )
 
-
+# new runner for monitoring agent to bypass the root agent and directly start a monitoring session. 
+monitoring_runner = Runner(
+    agent=monitoring_agent,
+    app_name=APP_NAME,
+    session_service=session_service
+)
 async def initialize_session():
     await session_service.create_session(app_name=APP_NAME,user_id=USER_ID,session_id=SESSION_ID)
 
