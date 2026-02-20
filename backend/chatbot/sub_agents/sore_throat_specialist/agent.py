@@ -91,54 +91,59 @@ def submit_final_triage(
 
 
 def update_patient_chart(
-    active_symptoms: List[str] = [],
-    new_symptoms: List[str] = [],
-    resolved_symptoms: List[str] = [],
-    temperature: str = None,
-    pain_scale: str = None,
-    phlegm_color: str = None,
+    active_symptoms: List[str] = None,
+    new_symptoms: List[str] = None,
+    resolved_symptoms: List[str] = None,
+    temperature: str = "",
+    pain_scale: str = "",
+    phlegm_color: str = "",
     tool_context: ToolContext = None
 ):
-    """
-    Updates the medical chart with new findings, scores, or red flags.
+    """Updates the medical chart with new findings, scores, or red flags."""
+    
+    # 0. Safely initialize mutable arguments
+    active_symptoms = active_symptoms or []
+    new_symptoms = new_symptoms or []
+    resolved_symptoms = resolved_symptoms or []
 
-    Args:
-        active_symptoms: Confirmed criteria (e.g., ["fever", "tonsillar_exudate", "cough"]).
-        new_symptoms: Newly reported symptoms that were not previously documented (e.g., ["loss_of_taste"]).
-        resolved_symptoms: Symptoms that are no longer present (e.g., ["headache"]).
-        temperature: Temperature reading (e.g., "38.5°C").
-        pain_scale: Pain level (e.g., "7/10").
-        phlegm_color: Color of phlegm (e.g., "yellow", "green", "clear", "red").
-    """
-    # 1. Get existing chart or create new
-    chart = tool_context.state.get("patient_chart", {
-        "active_symptoms": [],
-        "new_symptoms": [],
-        "resolved_symptoms": [],
-        "temperature": temperature,
-        "pain_scale": pain_scale,
-        "phlegm_color": phlegm_color,
-    })
+    # 1. Get existing chart, or start with an empty dict
+    chart = tool_context.state.get("patient_chart", {})
 
-    # 2. Update Lists (Merge and Deduplicate)
+    # 2. Schema Enforcement: Guarantee all keys exist in the dictionary
+    # setdefault checks if the key exists; if not, it creates it with the default value.
+    chart.setdefault("active_symptoms", [])
+    chart.setdefault("new_symptoms", [])
+    chart.setdefault("resolved_symptoms", [])
+    chart.setdefault("temperature", "")
+    chart.setdefault("pain_scale", "")
+    chart.setdefault("phlegm_color", "")
+
+    # 3. Update Lists (Merge and Deduplicate)
     chart["active_symptoms"] = list(set(chart["active_symptoms"] + active_symptoms))
     chart["new_symptoms"] = list(set(chart["new_symptoms"] + new_symptoms))
     chart["resolved_symptoms"] = list(set(chart["resolved_symptoms"] + resolved_symptoms))
 
-    #3 Remove any resolved symptoms from active and new lists
+    # 4. Remove any resolved symptoms from active and new lists
     chart["active_symptoms"] = [sym for sym in chart["active_symptoms"] if sym not in chart["resolved_symptoms"]]
     chart["new_symptoms"] = [sym for sym in chart["new_symptoms"] if sym not in chart["resolved_symptoms"]]
     
-    # 3. Update String
-    chart["temperature"] = temperature or chart["temperature"]
-    chart["pain_scale"] = pain_scale or chart["pain_scale"]
-    chart["phlegm_color"] = phlegm_color or chart["phlegm_color"]
+    # 5. Update Strings (Only overwrite if the agent actually passed in a new value)
+    if temperature:
+        chart["temperature"] = temperature
+    if pain_scale:
+        chart["pain_scale"] = pain_scale
+    if phlegm_color:
+        chart["phlegm_color"] = phlegm_color
 
-    # 4. Save back to state
+    # 6. Save back to state
     tool_context.state["patient_chart"] = chart
 
-    return f"Chart Updated. Active Symptoms: {chart['active_symptoms']}. New Symptoms: {chart['new_symptoms']}. Resolved Symptoms: {chart['resolved_symptoms']}. Temperature: {chart['temperature']}. Pain Scale: {chart['pain_scale']}. Phlegm Color: {chart['phlegm_color']}."
-
+    return (
+        f"Chart Updated. Active Symptoms: {chart['active_symptoms']}. "
+        f"New Symptoms: {chart['new_symptoms']}. Resolved Symptoms: {chart['resolved_symptoms']}. "
+        f"Temperature: {chart['temperature']}. Pain Scale: {chart['pain_scale']}. "
+        f"Phlegm Color: {chart['phlegm_color']}."
+    )
 
 
 sore_throat_specialist_agent = Agent(
