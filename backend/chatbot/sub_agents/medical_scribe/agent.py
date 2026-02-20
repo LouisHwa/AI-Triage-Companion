@@ -18,30 +18,34 @@ def create_refferal_entry(tool_context: ToolContext):
     chart = tool_context.state.get("patient_chart", {})
     triage = tool_context.state.get("final_triage", {})
     userID = tool_context.state.get("userID", {})
-
+    
     try:
         referral_data = {
             "createdAt": firestore.SERVER_TIMESTAMP,
             "userID": userID,
-            "triageData":[
-                {
-                    "symptoms": chart.get('symptoms', []),
-                    "vitals": chart.get('vitals', {}),
-                    "red_flags": chart.get('red_flags', 'None'),
-                    "absent":chart.get('absent', []),
-                    "stage": triage.get('stage', 'Unknown'),
-                    "reasoning": triage.get('reasoning', 'No reasoning provided'),
-                    "recommendation": triage.get('recommendation', 'No recommendation')
-                }
-            ],
-            "status": "PENDING",
+            "validation_status": "PENDING",
+            "current_stage": triage.get("stage", "Unknown"),
+            "active_symptoms": chart.get('active_symptoms', []),
             "validatedAt":"",
             "validatedBy":"",
             "validatedNotes":"",
             "monitor_status":"MONITORING",
+            
         }
         update_time, doc_ref = db.collection("referrals").add(referral_data)
-
+        
+        follow_up = {
+            "timestamp": firestore.SERVER_TIMESTAMP,
+            "event_type": "INITIAL_TRIAGE",
+            "new_symptoms": chart.get("new_symptoms", chart.get("active_symptoms", [])),
+            "stage": triage.get("stage", "Unknown"),
+            "reasoning": triage.get("reasoning", "No reasoning provided"),
+            "recommendation": triage.get("recommendation", "No recommendation"),
+            "temperature": chart.get("temperatuure", "Not provided"),
+            "pain_scale": chart.get("pain_scale", "Not provided"),
+            "phlegm_color": chart.get("phlegm_color", "Not provided"),
+        }
+        db.collection("referrals").document(doc_ref.id).collection("follow_ups").add(follow_up)
         tool_context.state["referral_doc_id"] = doc_ref.id
 
         print(f"Saved to Cloud Firestore with ID: {doc_ref.id}")
