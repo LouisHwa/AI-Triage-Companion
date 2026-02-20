@@ -215,7 +215,7 @@ def fetch_case_history(referral_id: str, tool_context: ToolContext):
 
     triage_list = data.get('triageData', [])
     original_triage = triage_list[0] if triage_list else {}
-    last_triage = triage_list[-1] if triage_list else {}
+    # last_triage = triage_list[-1] if triage_list else {}
     doctor_notes = data.get('validatedNotes', 'None')
     monitor_status = data.get('monitor_status', 'ongoing')
     
@@ -244,7 +244,7 @@ def fetch_case_history(referral_id: str, tool_context: ToolContext):
     tool_context.state["patient_case_context"] = {
         "status": monitor_status.upper(),
         "original_diagnosis": original_triage.get('stage', 'Unknown'),
-        "latest_diagnosis": last_triage.get('stage', 'Unknown'),
+        # "latest_diagnosis": last_triage.get('stage', 'Unknown'),
         "key_symptoms": original_triage.get('symptoms', []),
         "doctor_notes": doctor_notes,
         "doctor_recommendation": original_triage.get('recommendation', 'N/A'),
@@ -256,7 +256,6 @@ def fetch_case_history(referral_id: str, tool_context: ToolContext):
     [OFFICIAL PATIENT RECORD]
     - Status: {monitor_status.upper()}
     - Original Diagnosis: {original_triage.get('stage', 'Unknown')}
-    - Latest Diagnosis: {last_triage.get('stage', 'Unknown')}
     - Key Symptoms: {', '.join(original_triage.get('symptoms', []))}
     - Doctor's Note: "{doctor_notes}"
     - Doctor's Recommendation: "{original_triage.get('recommendation', 'N/A')}"
@@ -265,118 +264,3 @@ def fetch_case_history(referral_id: str, tool_context: ToolContext):
     """
     return summary
 
-# new tool for creating and updating db entries
-
-# def create_referral(user_id: str, chart: dict, triage: dict) -> str:
-#     """
-#     Creates a new patient referral and logs the initial triage as the first event.
-#     Uses a batched write to guarantee the main document and initial history 
-#     are created simultaneously.
-#     """
-#     try:
-#         # 1. Generate empty document references up front
-#         # We need the ID before we write so we can link the subcollection
-#         new_referral_ref = db.collection("referrals").document() 
-#         new_event_ref = new_referral_ref.collection("events").document()
-        
-#         # 2. Define Main Document (State & Identity Only)
-#         referral_state = {
-#             "userID": user_id,
-#             "status": "PENDING",
-#             "monitor_status": "MONITORING",
-#             "validatedAt": "",
-#             "validatedBy": "",
-#             "validatedNotes": "",
-#             "createdAt": firestore.SERVER_TIMESTAMP,
-#             "last_updated": firestore.SERVER_TIMESTAMP
-#         }
-        
-#         # 3. Define the Initial Event (Historical Payload)
-#         # We dump the heavy array data here, keeping the main doc light
-#         initial_event = {
-#             "type": "initial_triage",
-#             "timestamp": firestore.SERVER_TIMESTAMP,
-#             "source": "intake_system",
-#             "data": {
-#                 "symptoms": chart.get('symptoms', []),
-#                 "vitals": chart.get('vitals', {}),
-#                 "red_flags": chart.get('red_flags', 'None'),
-#                 "absent": chart.get('absent', []),
-#                 "stage": triage.get('stage', 'Unknown'),
-#                 "reasoning": triage.get('reasoning', 'No reasoning provided'),
-#                 "recommendation": triage.get('recommendation', 'No recommendation')
-#             }
-#         }
-        
-#         # 4. Execute Atomic Batch Write
-#         # Both documents write perfectly, or neither writes at all.
-#         batch = db.batch()
-#         batch.set(new_referral_ref, referral_state)
-#         batch.set(new_event_ref, initial_event)
-#         batch.commit()
-        
-#         # 5. Return the ID so the system knows what to update later
-#         print(f"SUCCESS: Created referral {new_referral_ref.id} with initial triage.")
-#         return new_referral_ref.id
-        
-#     except Exception as e:
-#         print(f"❌ Critical Database Transaction Failed: {e}")
-#         return f"Database Error: {str(e)}"
-
-
-# def update_referral(event_type: str, event_data: dict, tool_context: ToolContext):
-#     """
-#     Unified system for logging all patient interactions (triage, check-ins, lab results).
-#     Uses a batched write to guarantee database consistency.
-    
-#     Args:
-#         event_type: e.g., 'triage', 'daily_check_in', 'doctor_note'
-#         event_data: A dictionary containing the specific payload for this event.
-#     """
-#     referral_id = tool_context.state.get("current_referral_id")
-    
-#     if not referral_id:
-#         return "Error: No active referral ID found in context. Cannot log event."
-
-#     try:
-#         doc_ref = db.collection("referrals").document(referral_id)
-        
-#         # 1. Standardize the historical event record
-#         new_event = {
-#             "type": event_type,
-#             "timestamp": firestore.SERVER_TIMESTAMP,
-#             "data": event_data, # Flexible payload: holds triage arrays OR check-in notes
-#             "source": "automated_agent"
-#         }
-
-#         # 2. Dynamically calculate updates for the main document's current state
-#         main_updates = {
-#             "last_updated": firestore.SERVER_TIMESTAMP
-#         }
-        
-#         if event_type == "triage":
-#             # Extract status strictly from the data, do not hardcode assumptions
-#             main_updates["monitor_status"] = event_data.get("calculated_status", "NEEDS_REVIEW")
-        
-#         elif event_type == "daily_check_in":
-#             main_updates["monitor_status"] = event_data.get("status", "ongoing")
-#             main_updates["check_in_count"] = firestore.Increment(1)
-
-#         # 3. Execute as an Atomic Batch Write
-#         # Either BOTH operations succeed, or BOTH fail. No corrupted data states.
-#         batch = db.batch()
-        
-#         # Update main state
-#         batch.update(doc_ref, main_updates)
-        
-#         # Append to historical timeline
-#         new_event_ref = doc_ref.collection("events").document() # Auto-generates ID
-#         batch.set(new_event_ref, new_event)
-        
-#         batch.commit()
-
-#         return f"SUCCESS: Logged '{event_type}' event and updated referral {referral_id}."
-
-#     except Exception as e:
-#         print(f"❌ Critical Database Transaction Failed: {e}")
-#         return f"Database Error: {str(e)}"
