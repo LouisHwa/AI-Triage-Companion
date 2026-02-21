@@ -309,23 +309,23 @@ async def view_referral_portal(referral_id: str):
         """
 
     user_ref = db.collection("user").document(data.get('userID'))
-
     user_data = user_ref.get().to_dict()
     
     # Simple HTML Template (You can make this prettier)
-    #sry bro triage is gone.... 
-    triage_list = data.get('triageData', [])
-    triage = triage_list[0] if triage_list else {}
-
-    # Extract fields safely
-    stage = triage.get('stage', 'Unknown')
-    symptoms = ", ".join(triage.get('symptoms', [])) or "None reported"
-    absent = ", ".join(triage.get('absent', [])) or "None"
-    red_flags = ", ".join(triage.get('red_flags', [])) or "None"
-    vitals = triage.get('vitals', {})
-    age = vitals.get('age', 'N/A')
+        # Extract fields safely
+    follow_ups_docs = doc_ref.collection("follow_ups").where("event_type", "==", "INITIAL_TRIAGE").limit(1).get()
+    triage = follow_ups_docs[0].to_dict() if follow_ups_docs else {}
+    stage = data.get('current_stage', triage.get('stage', 'Unknown'))
+    raw_symptoms = data.get('active_symptoms', triage.get('new_symptoms', []))
+    symptoms = ", ".join(raw_symptoms) if isinstance(raw_symptoms, list) else str(raw_symptoms)
+    raw_resolved = triage.get('resolved_symptoms', [])
+    resolved = ", ".join(raw_resolved).title() if raw_resolved else "None"
+    red_flags = "None (Not tracked in current system)"
+    age = user_data.get('Age', 'N/A') 
     reasoning = triage.get('reasoning', 'No reasoning provided.')
     recommendation = triage.get('recommendation', 'No recommendation provided.')
+
+
 
     # --- DYNAMIC HTML TEMPLATE ---
     html_content = f"""
@@ -362,7 +362,7 @@ async def view_referral_portal(referral_id: str):
         <div class="container">
             <h1>Validation Request</h1>
             <p><strong>Patient:</strong> {user_data.get('Name')} (Age: {age})</p>
-            <p><strong>Current Status:</strong> <span class="status-badge">{data.get('status')}</span></p>
+            <p><strong>Current Status:</strong> <span class="status-badge">{current_status}</span></p>
 
             <h2>🤖 AI Triage Assessment</h2>
             
@@ -373,7 +373,7 @@ async def view_referral_portal(referral_id: str):
 
             <div class="section">
                 <p><strong>Reported Symptoms:</strong> {symptoms}</p>
-                <p><strong>Symptoms Denied:</strong> {absent}</p>
+                <p><strong>Symptoms Resolved:</strong> {resolved}</p>
             </div>
 
             <div class="section">

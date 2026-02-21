@@ -148,6 +148,7 @@ def analyze_throat_condition(image_path: str, tool_context: ToolContext) -> dict
         analysis_summary = {
             "status": "success",
             "patient_context": {
+                "name": user_info.get('Name', 'Unknown Patient'),
                 "age": user_info.get('Age'),
                 "gender": user_info.get('Gender'),
                 "history": user_info.get('Medical_History'),
@@ -195,72 +196,4 @@ def get_user_information():
     userID = "BdLcWMFmHjiPghRE7EZW"
     return db.collection("user").document(userID).get().to_dict()
 
-#tools for monitoring 
-def fetch_case_history(referral_id: str, tool_context: ToolContext):
-    """
-    Retrieves the clinical context of a specific referral case from Firestore.
-    Use this to understand the patient's history before asking questions.
-    """
-    print(f"🔍 Fetching history for referral: {referral_id}")
-    
-    doc_ref = db.collection("referrals").document(referral_id)
-    doc = doc_ref.get()
-
-    if not doc.exists:
-        return "System Error: Case ID not found in database."
-
-    data = doc.to_dict()
-    
-    # Extract critical info safely
-
-    triage_list = data.get('triageData', [])
-    original_triage = triage_list[0] if triage_list else {}
-    # last_triage = triage_list[-1] if triage_list else {}
-    doctor_notes = data.get('validatedNotes', 'None')
-    monitor_status = data.get('monitor_status', 'ongoing')
-    
-    # Fetch check-in history if user have checked in before
-    check_ins_stream = doc_ref.collection("check_ins")\
-        .order_by("timestamp", direction=firestore.Query.ASCENDING)\
-        .stream()
-    
-    check_in_history = ""
-    for log in check_ins_stream:
-        log_data = log.to_dict()
-        date_str = log_data.get('timestamp', datetime.now()).strftime("%Y-%m-%d")
-        status = log_data.get('status', 'unknown')
-        notes = log_data.get('notes', 'No notes')
-        
-        check_in_history += f"   - [{date_str}] Status {status}: \"{notes}\"\n"
-
-    # Fallback if no history
-    if not check_in_history:
-        check_in_history = "   - No previous check-ins."
-
-    # Save specific context to state for the conversation duration
-    tool_context.state["current_referral_id"] = referral_id
-    
-    # We create a rigid dictionary of the facts so it cannot be hallucinated later.
-    tool_context.state["patient_case_context"] = {
-        "status": monitor_status.upper(),
-        "original_diagnosis": original_triage.get('stage', 'Unknown'),
-        # "latest_diagnosis": last_triage.get('stage', 'Unknown'),
-        "key_symptoms": original_triage.get('symptoms', []),
-        "doctor_notes": doctor_notes,
-        "doctor_recommendation": original_triage.get('recommendation', 'N/A'),
-        "check_in_history": check_in_history
-    }
-    
-    # Format for the LLM's immediate response
-    summary = f"""
-    [OFFICIAL PATIENT RECORD]
-    - Status: {monitor_status.upper()}
-    - Original Diagnosis: {original_triage.get('stage', 'Unknown')}
-    - Key Symptoms: {', '.join(original_triage.get('symptoms', []))}
-    - Doctor's Note: "{doctor_notes}"
-    - Doctor's Recommendation: "{original_triage.get('recommendation', 'N/A')}"
-    [RECOVERY TIMELINE]
-    {check_in_history}
-    """
-    return summary
 

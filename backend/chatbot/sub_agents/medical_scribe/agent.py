@@ -41,7 +41,7 @@ def create_refferal_entry(tool_context: ToolContext):
             "stage": triage.get("stage", "Unknown"),
             "reasoning": triage.get("reasoning", "No reasoning provided"),
             "recommendation": triage.get("recommendation", "No recommendation"),
-            "temperature": chart.get("temperatuure", "Not provided"),
+            "temperature": chart.get("temperature", "Not provided"),
             "pain_scale": chart.get("pain_scale", "Not provided"),
             "phlegm_color": chart.get("phlegm_color", "Not provided"),
         }
@@ -71,7 +71,7 @@ def generate_referral_letter(
     # 1. Retrieve all data from state
     chart = tool_context.state.get("patient_chart", {})
     triage = tool_context.state.get("final_triage", {})
-    user_info = tool_context.state.get("user_info", {"name": "Unknown Patient"})
+    user_info = tool_context.state.get("user_general_information", {"name": "Unknown Patient"})
     
     # 2. Format the "Document" (Simulated here)
     document_content = f"""
@@ -84,9 +84,10 @@ def generate_referral_letter(
     SEVERITY: {triage.get('stage')}
     
     CLINICAL FINDINGS:
-    - Symptoms: {', '.join(chart.get('symptoms', []))}
-    - Vitals: {chart.get('vitals', {})}
-    - Red Flags: {chart.get('red_flags', 'None')}
+    - Symptoms: {', '.join(chart.get('active_symptoms', []))}
+    - Temperature: {chart.get('temperature', 'Not provided')}
+    - Pain Scale: {chart.get('pain_scale', 'Not provided')}
+    - Phlegm Color: {chart.get('phlegm_color', 'Not provided')}
     
     AI ANALYSIS:
     {key_findings}

@@ -3,6 +3,10 @@ from dotenv import load_dotenv
 from google.adk.tools import AgentTool
 from google.adk.tools import ToolContext
 from ..sore_throat_specialist.agent import sore_throat_specialist_agent
+from google.cloud import firestore
+from firestore_client import db
+
+load_dotenv()
 
 def fetch_case_history(referral_id: str, tool_context: ToolContext):
     """
@@ -67,7 +71,8 @@ def fetch_case_history(referral_id: str, tool_context: ToolContext):
         "new_symptoms": [],      # Blank slate for today's chat
         "resolved_symptoms": [], # Blank slate for today's chat
         "temperature": latest_event.get("temperature", "Not provided"),
-        "pain_level": latest_event.get("pain_level", "Not provided")
+        "pain_scale": latest_event.get("pain_scale", "Not provided"),
+        "phlegm_color": latest_event.get("phlegm_color", "Not provided"),
     }
 
     # 5. Format the prompt injection
@@ -94,12 +99,15 @@ def update_recovery_status(monitor_status: str, patient_update: str, tool_contex
     referral_id = tool_context.state.get("current_referral_id")
     chart = tool_context.state.get("patient_chart", {}) 
     context = tool_context.state.get("patient_case_context", {})
+    final_triage = tool_context.state.get("final_triage", {})
 
     if not referral_id:
         return "CRITICAL ERROR: No Referral ID found. Cannot save check-in."
 
     try:
         doc_ref = db.collection("referrals").document(referral_id)
+
+        is_escalated = monitor_status.upper() == "WORSENED"
         
         # 1. Build the Check-In Snapshot
         check_in_event = {
@@ -108,10 +116,11 @@ def update_recovery_status(monitor_status: str, patient_update: str, tool_contex
             "new_symptoms": [], # Routine check-ins don't diagnose new symptoms
             "resolved_symptoms": [], 
             "stage": context.get("latest_diagnosis", "Unknown"), # Stage doesn't change
-            "agent_reasoning": patient_update, # Save what the patient said here
-            "agent_recommendation": "Continue current care plan.",
+            "reasoning": patient_update, # Save what the patient said here
+            "recommendation": "Continue current care plan.",
             "temperature": chart.get("temperature", "Not provided"),
-            "pain_level": chart.get("pain_level", "Not provided")
+            "pain_scale": chart.get("pain_scale", "Not provided"),
+            "phlegm_color": chart.get("phlegm_color", "Not provided"),
         }
 
         # 2. Append to the Timeline
@@ -119,7 +128,9 @@ def update_recovery_status(monitor_status: str, patient_update: str, tool_contex
 
         # 3. Update the Dashboard Status
         doc_ref.update({
-            "monitor_status": monitor_status.upper()
+            "monitor_status": monitor_status.upper(),
+            "current_stage": check_in_event["stage"],
+            "active_symptoms": chart.get("active_symptoms", context.get("key_symptoms", []))
         })
 
         return f"SUCCESS: Timeline updated. Patient dashboard set to {monitor_status.upper()}."
@@ -129,7 +140,7 @@ def update_recovery_status(monitor_status: str, patient_update: str, tool_contex
         return f"Database Error: {str(e)}"
    
 
-load_dotenv()
+
 
 monitoring_agent = Agent(
     name="monitoring_agent",
@@ -170,6 +181,11 @@ monitoring_agent = Agent(
     - **Response**: "I am concerned about this change. I am transferring you to a triage specialist for an immediate re-evaluation to update your chart."
     - **Tool Call**: IMMEDIATELY call the `sore_throat_specialist_agent` tool to hand over control.
 
+    **GATE D: POST-ESCALATION LOGGING (After Specialist Returns)**
+    - **Trigger**: The `sore_throat_specialist_agent` finishes its job and returns control back to you.
+    - **Execution**: You MUST immediately call `update_recovery_status(monitor_status='WORSENED', patient_update='Patient re-evaluated by specialist')`. 
+    - **Closing**: Advise the patient of the specialist's final recommendation and end the session.
+    
     **Absolute Constraints:**
     - Never prescribe medication.
     - Never attempt to diagnose a new symptom yourself. 
