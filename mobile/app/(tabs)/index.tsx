@@ -25,21 +25,25 @@ import { useRoute } from "@react-navigation/native";
 // ⚠️ CHANGE TO YOUR IP, no need to add /chat
 const API_BASE_URL = "http://192.168.0.160:8000";
 // const API_BASE_URL = "https://adultly-peckiest-kourtney.ngrok-free.dev";
+// const API_BASE_URL = "http://192.168.0.160:8000";
+const API_BASE_URL = "https://adultly-peckiest-kourtney.ngrok-free.dev";
 
 // --- Typewriter Component ---
 const TypewriterText = memo(({ text, style }: { text: string; style: any }) => {
   const [displayedText, setDisplayedText] = useState("");
   const index = useRef(0);
 
+  const safeText = text || "";
+
   useEffect(() => {
-    // Reset if text changes
     setDisplayedText("");
     index.current = 0;
 
     const speed = 10;
     const timer = setInterval(() => {
-      if (index.current < text.length) {
-        const chunk = text.slice(index.current, index.current + 3);
+      // 2. Use safeText here
+      if (index.current < safeText.length) {
+        const chunk = safeText.slice(index.current, index.current + 3);
         setDisplayedText((prev) => prev + chunk);
         index.current += 3;
       } else {
@@ -47,7 +51,7 @@ const TypewriterText = memo(({ text, style }: { text: string; style: any }) => {
       }
     }, speed);
     return () => clearInterval(timer);
-  }, [text]);
+  }, [safeText]); // 3. Depend on safeText
 
   return <ThemedText style={style}>{displayedText}</ThemedText>;
 });
@@ -225,16 +229,21 @@ export default function ChatScreen() {
 
     try {
       // 4. Fetch from Backend (Happens in background immediately)
-      const response = await fetch(API_BASE_URL, {
+      const response = await fetch(`${API_BASE_URL}/chat`, {
         method: "POST",
         body: formData,
-        headers: { Accept: "application/json" },
+        headers: {
+          Accept: "application/json",
+          "ngrok-skip-browser-warning": "true",
+        },
       });
       const data = await response.json();
 
       const botMessage = {
         id: (Date.now() + 1).toString(),
-        text: data.reply,
+        text:
+          data.reply ||
+          "Sorry, I didn't receive a valid response from the server.", // <-- Add fallback
         sender: "bot",
         hasText: true,
       };

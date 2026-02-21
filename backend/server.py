@@ -169,6 +169,11 @@ async def chat(
     file: UploadFile = File(None),
     audio: UploadFile = File(None)
 ):
+    if referral_id:
+        referral_id = referral_id.strip()  # Removes accidental spaces like " "
+        if referral_id.lower() in ["", "undefined", "null", "none"]:
+            referral_id = None  # Force it to a true Python None
+            
     print(f"Received - Text: {message}, Image: {file.filename if file else 'No'}, Audio: {audio.filename if audio else 'No'}")
     print(f"Referral ID: {referral_id}")  # ✅ Log referral ID for follow-up context
     saved_image_path = None
