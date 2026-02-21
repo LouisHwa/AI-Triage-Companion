@@ -273,7 +273,7 @@ async def view_referral_portal(referral_id: str):
     
     
     data = doc.to_dict()
-    current_status = data.get('status', 'pending_validation')
+    current_status = data.get('validation_status', 'pending_validation')
 
     # 🛑 GUARD CLAUSE: If already processed, show "Completed" screen
     if current_status in ["APPROVED", "REJECTED"]:
@@ -408,7 +408,7 @@ async def submit_validation(referral_id: str, action: str = Form(...), doctor_no
     # Update Firestore
     doc_ref = db.collection("referrals").document(referral_id)
     doc_ref.update({
-        "status": action,
+        "validation_status": action,
         "validatedNotes": doctor_notes,
         "validatedAt": firestore.SERVER_TIMESTAMP,
         "validatedBy": doctor_name
@@ -441,16 +441,43 @@ async def submit_validation(referral_id: str, action: str = Form(...), doctor_no
     </html>
     """
 
+# @app.get("/user/{user_id}/referrals")
+# async def get_user_referrals(user_id: str):
+
+#     referrals = db.collection("referrals").where("userID", "==", user_id).stream()
+
+#     results = []
+
+#     for doc in referrals:
+#         data = doc.to_dict()
+#         data["id"] = doc.id
+#         results.append(data)
+
+#     return results
+
 @app.get("/user/{user_id}/referrals")
 async def get_user_referrals(user_id: str):
-
-    referrals = db.collection("referrals").where("userID", "==", user_id).stream()
-
+    referrals_stream = db.collection("referrals").where("userID", "==", user_id).stream()
     results = []
 
-    for doc in referrals:
+    for doc in referrals_stream:
         data = doc.to_dict()
         data["id"] = doc.id
+        
+        # 🚨 You MUST fetch the subcollection data
+        follow_up_query = db.collection("referrals").document(doc.id).collection("follow_ups").where("event_type", "==", "INITIAL_TRIAGE").limit(1).stream()
+        
+        follow_up_data = {}
+        for t_doc in follow_up_query:
+            follow_up_data = t_doc.to_dict()
+            break 
+        
+        # Merge the subcollection data into the parent object for the frontend
+        data["reasoning"] = follow_up_data.get("reasoning", "No reasoning provided.")
+        data["recommendation"] = follow_up_data.get("recommendation", "No recommendation provided.")
+        data["resolved_symptoms"] = follow_up_data.get("resolved_symptoms", [])
+        data["active_symptoms"] = data.get("active_symptoms", [])
+        
         results.append(data)
 
     return results
