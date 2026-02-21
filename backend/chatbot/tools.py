@@ -178,22 +178,65 @@ def analyze_throat_condition(image_path: str, tool_context: ToolContext) -> dict
         return {"status": "error", "message": str(e)}
 
 # --- LEGACY FUNCTIONS ---
-def set_patient_information(age: int, gender: str, medical_history:str , symptom_description: str, tool_context: ToolContext):
-    # Minimal write-only function
-    userID = "BdLcWMFmHjiPghRE7EZW"
-    user_general_information = tool_context.state.get("user_general_information", {})
+# def set_patient_information(age: int, gender: str, medical_history:str , symptom_description: str, tool_context: ToolContext):
+#     # Minimal write-only function
+#     userID = "BdLcWMFmHjiPghRE7EZW"
+#     user_general_information = tool_context.state.get("user_general_information", {})
     
-    if age: user_general_information["age"] = age
-    if gender: user_general_information["gender"] = gender
-    if medical_history: user_general_information["medical_history"] = medical_history
-    if symptom_description: user_general_information["symptom_description"] = symptom_description
+#     if age: user_general_information["age"] = age
+#     if gender: user_general_information["gender"] = gender
+#     if medical_history: user_general_information["medical_history"] = medical_history
+#     if symptom_description: user_general_information["symptom_description"] = symptom_description
     
-    tool_context.state["user_general_information"] = user_general_information
-    tool_context.state["userID"] = userID
-    return "Info updated."
+#     tool_context.state["user_general_information"] = user_general_information
+#     tool_context.state["userID"] = userID
+#     return "Info updated."
 
-def get_user_information():
+# def get_user_information():
+#     userID = "BdLcWMFmHjiPghRE7EZW"
+#     return db.collection("user").document(userID).get().to_dict()
+
+
+def get_user_information(tool_context: ToolContext):
+    """
+    Fetches the static user profile from Firestore and automatically seeds the state memory.
+    """
     userID = "BdLcWMFmHjiPghRE7EZW"
-    return db.collection("user").document(userID).get().to_dict()
+    doc = db.collection("user").document(userID).get()
+    db_data = doc.to_dict() if doc.exists else {}
+
+    # Initialize state dictionary
+    user_info = tool_context.state.get("user_general_information", {})
+
+    # Map Firestore's Capitalized keys to the lowercase keys the specialist agent expects
+    if "Age" in db_data: user_info["age"] = db_data["Age"]
+    if "Gender" in db_data: user_info["gender"] = str(db_data["Gender"]).lower()
+    if "Medical_History" in db_data: user_info["medical_history"] = db_data["Medical_History"]
+    if "Name" in db_data: user_info["name"] = db_data["Name"]
+
+    # Lock it into state memory
+    tool_context.state["user_general_information"] = user_info
+    tool_context.state["userID"] = userID
+
+    return user_info
+
+
+def set_patient_information(symptom_description: str, tool_context: ToolContext, age: int = None, gender: str = None, medical_history: str = None):
+    """
+    Saves the user's live symptom description to state memory. 
+    Can also be used to override age/gender/history if the user corrects them during chat.
+    """
+    user_info = tool_context.state.get("user_general_information", {})
+    
+    if symptom_description: user_info["symptom_description"] = symptom_description
+    
+    # Optional overrides just in case the database was wrong and the user corrects the AI
+    if age: user_info["age"] = age
+    if gender: user_info["gender"] = gender
+    if medical_history: user_info["medical_history"] = medical_history
+    
+    tool_context.state["user_general_information"] = user_info
+    
+    return "Patient context updated in state memory."
 
 

@@ -4,7 +4,8 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.encoders import jsonable_encoder
 from google.genai import types
 from dotenv import load_dotenv
-from chatbot.agent import runner, monitoring_runner, initialize_session, USER_ID, SESSION_ID
+from chatbot.agent import runner, initialize_session, USER_ID, SESSION_ID
+from chatbot.monitoring_agent import monitoring_runner, initialize_session, USER_ID, SESSION_ID
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 from typing import List, Optional

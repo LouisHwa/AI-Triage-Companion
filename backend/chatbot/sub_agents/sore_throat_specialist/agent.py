@@ -99,6 +99,13 @@ def update_patient_chart(
     phlegm_color: str = "",
     tool_context: ToolContext = None
 ):
+
+    # If the agent passed in a single string instead of a list, convert it to a list for consistency
+    if isinstance(active_symptoms, str): active_symptoms = [active_symptoms]
+    if isinstance(new_symptoms, str): new_symptoms = [new_symptoms]
+    if isinstance(resolved_symptoms, str): resolved_symptoms = [resolved_symptoms]
+
+
     """Updates the medical chart with new findings, scores, or red flags."""
     
     # 0. Safely initialize mutable arguments
@@ -158,7 +165,7 @@ sore_throat_specialist_agent = Agent(
         **BEFORE** saying anything, look at the `patient_case_context` in the state, or check if the user is in re-evaluation mode.
         
         **IF `patient_case_context` IS NOT EMPTY (Re-evaluation Mode):**
-        1. Do NOT ask for age, gender, or image again.
+        1. Do NOT ask for age, gender, or image again, get it from 'get_user_information'.
         2. Read the User's last message immediately to find **NEW symptoms** (e.g., "I have a fever").
         3. Call `update_patient_chart` with the new symptoms.
         4. Immediately re-calculate the Centor Score (Old Data + New Data).

@@ -1,8 +1,11 @@
 from google.adk.agents import Agent
 from dotenv import load_dotenv
 from google.adk.tools import AgentTool
+from google.adk.runners import Runner
+from google.adk.sessions import InMemorySessionService
 from google.adk.tools import ToolContext
-from ..sore_throat_specialist.agent import sore_throat_specialist_agent
+from .tools import analyze_throat_condition, set_patient_information, get_user_information
+from .sub_agents.sore_throat_specialist.agent import sore_throat_specialist_agent
 from google.cloud import firestore
 from firestore_client import db
 
@@ -156,10 +159,11 @@ monitoring_agent = Agent(
     ### PHASE 1: INITIALIZATION (System Start)
     **Trigger**: The user's first message contains a "Referral ID".
     **Action**:
-    1. IMMEDIATELY call `fetch_case_history(referral_id)`.
-    2. **Constraint:** Do NOT output any conversational text or greetings until this tool has successfully returned the data.
-    3. Once the data returns, read the `[CURRENT DASHBOARD]` and `[CLINICAL TIMELINE]`. 
-    4. Greet the patient specifically. Acknowledge their `Current Stage` and the `Active Symptoms` they previously reported. Ask them for a specific update on those symptoms.
+    1. call "get_user_information" to get the patient's information.
+    2. call `fetch_case_history(referral_id)`.     
+    3. **Constraint:** Do NOT output any conversational text or greetings until the tools has successfully returned the data.
+    4. Once the data returns, read the `[CURRENT DASHBOARD]` and `[CLINICAL TIMELINE]`. 
+    5. Greet the patient personally using their name. For example, "Hello [Patient Name], I'm here to check in on your condition since our last conversation.". Acknowledge their `Current Stage` and the `Active Symptoms` they previously reported. Ask them for a specific update on those symptoms.
 
     ### PHASE 2: EVALUATION & ROUTING (User Responds)
     **Trigger**: The user provides an update on their condition.
@@ -193,3 +197,18 @@ monitoring_agent = Agent(
     """
 
 )
+
+APP_NAME = "conversationalist_App"
+USER_ID = "12345"
+SESSION_ID = "112233"
+
+session_service = InMemorySessionService()
+
+monitoring_runner = Runner(
+    agent=monitoring_agent,
+    app_name=APP_NAME,
+    session_service=session_service
+)
+
+async def initialize_session():
+    await session_service.create_session(app_name=APP_NAME,user_id=USER_ID,session_id=SESSION_ID)
