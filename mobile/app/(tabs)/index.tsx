@@ -16,17 +16,15 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { Audio } from "expo-av";
+import ImageCropper from "@/components/ImageCropper";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 
 import { useRoute } from "@react-navigation/native";
 
-// ⚠️ CHANGE TO YOUR IP, no need to add /chat
-const API_BASE_URL = "http://192.168.0.160:8000";
-// const API_BASE_URL = "https://adultly-peckiest-kourtney.ngrok-free.dev";
-// const API_BASE_URL = "http://192.168.0.160:8000";
-const API_BASE_URL = "https://adultly-peckiest-kourtney.ngrok-free.dev";
+// Centralized services
+import { API_BASE_URL } from "@/services/apiClient";
 
 // --- Typewriter Component ---
 const TypewriterText = memo(({ text, style }: { text: string; style: any }) => {
@@ -56,6 +54,46 @@ const TypewriterText = memo(({ text, style }: { text: string; style: any }) => {
   return <ThemedText style={style}>{displayedText}</ThemedText>;
 });
 TypewriterText.displayName = "TypewriterText";
+
+// --- Delayed Guide Card — appears after TypewriterText finishes ---
+// Matches the typewriter speed: 3 chars per 10ms → delay = (text.length / 3) * 10 ms
+const DelayedGuideCard = memo(({ text, styles }: { text: string; styles: any }) => {
+  const [visible, setVisible] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(10)).current;
+
+  useEffect(() => {
+    // Calculate how long typewriter takes, add 200ms buffer
+    const typewriterMs = Math.ceil((text.length / 3) * 10) + 200;
+    const timer = setTimeout(() => {
+      setVisible(true);
+      Animated.parallel([
+        Animated.timing(fadeAnim, { toValue: 1, duration: 350, useNativeDriver: true }),
+        Animated.timing(translateY, { toValue: 0, duration: 350, useNativeDriver: true }),
+      ]).start();
+    }, typewriterMs);
+    return () => clearTimeout(timer);
+  }, [text]);
+
+  if (!visible) return null;
+
+  return (
+    <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY }] }}>
+      <View style={styles.guideCard}>
+        <View style={styles.guideHeader}>
+          <Ionicons name="camera" size={20} color="#fff" />
+          <ThemedText style={styles.guideHeaderText}>Photo Capture Guide</ThemedText>
+        </View>
+        <Image
+          source={require("../../assets/images/throat_guide.jpg")}
+          style={styles.guideImage}
+          resizeMode="contain"
+        />
+      </View>
+    </Animated.View>
+  );
+});
+DelayedGuideCard.displayName = "DelayedGuideCard";
 
 // --- Typing Indicator (3 Bouncing Dots) ---
 const TypingIndicator = memo(() => {
@@ -108,6 +146,8 @@ export default function ChatScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [activeReferralId, setActiveReferralId] = useState<string | null>(null);
+  const [cropperUri, setCropperUri] = useState<string | null>(null); // raw URI waiting to be cropped
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
@@ -117,6 +157,7 @@ export default function ChatScreen() {
 
   const initiateFollowUp = async (id: string) => {
     setIsLoading(true);
+    setActiveReferralId(id); // 🔑 Lock the session to monitoring agent
 
     const formData = new FormData();
     formData.append("referral_id", id); // Send the ID
@@ -170,7 +211,7 @@ export default function ChatScreen() {
       duration: 800,
       useNativeDriver: true,
     }).start();
-  });
+  }, []); // ✅ Run once on mount only
 
   useEffect(() => {
     if (messages.length > 0 || isLoading) {
@@ -200,6 +241,8 @@ export default function ChatScreen() {
     // 2. Prepare Data
     const formData = new FormData();
     if (text) formData.append("message", text);
+    // Always include referral_id if in follow-up mode — routes to monitoring agent
+    if (activeReferralId) formData.append("referral_id", activeReferralId);
     if (imageUri)
       formData.append("file", {
         uri: imageUri,
@@ -239,13 +282,20 @@ export default function ChatScreen() {
       });
       const data = await response.json();
 
+      const rawReply =
+        data.reply ||
+        "Sorry, I didn't receive a valid response from the server.";
+
+      // Detect [PHOTO_GUIDE] tag
+      const hasPhotoGuide = rawReply.includes("[PHOTO_GUIDE]");
+      const cleanReply = rawReply.replace(/\[PHOTO_GUIDE\]/g, "").trim();
+
       const botMessage = {
         id: (Date.now() + 1).toString(),
-        text:
-          data.reply ||
-          "Sorry, I didn't receive a valid response from the server.", // <-- Add fallback
+        text: cleanReply,
         sender: "bot",
         hasText: true,
+        showPhotoGuide: hasPhotoGuide,
       };
       setMessages((prev) => [...prev, botMessage]);
     } catch (error) {
@@ -258,17 +308,17 @@ export default function ChatScreen() {
   const openCamera = async () => {
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.5,
+      quality: 1, // full quality — we crop ourselves
     });
-    if (!result.canceled) sendToBackend(null, result.assets[0].uri, null);
+    if (!result.canceled) setCropperUri(result.assets[0].uri); // → show custom cropper
   };
 
   const openGallery = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.5,
+      quality: 1,
     });
-    if (!result.canceled) sendToBackend(null, result.assets[0].uri, null);
+    if (!result.canceled) setCropperUri(result.assets[0].uri); // → show custom cropper
   };
 
   const startRecording = async () => {
@@ -327,6 +377,11 @@ export default function ChatScreen() {
           )}
         </View>
       )}
+
+      {/* Photo Guide Card — fades in after typewriter animation finishes */}
+      {item.showPhotoGuide && (
+        <DelayedGuideCard text={item.text || ""} styles={styles} />
+      )}
     </View>
   );
 
@@ -337,10 +392,13 @@ export default function ChatScreen() {
       <View style={styles.headerBar}>
         <ThemedText style={styles.headerTitle}>AI TRIAGE</ThemedText>
         <TouchableOpacity
-          onPress={() => setMessages([])}
+          onPress={() => {
+            setMessages([]);
+            setActiveReferralId(null); // Reset mode when clearing chat
+          }}
           style={styles.refreshButton}
         >
-          <Ionicons name="refresh-outline" size={24} color="#0a7ea4" />
+          <Ionicons name="refresh-outline" size={22} color="#0a7ea4" />
         </TouchableOpacity>
       </View>
 
@@ -389,8 +447,8 @@ export default function ChatScreen() {
               >
                 <Ionicons
                   name="image-outline"
-                  size={26}
-                  color={isRecording ? "#ccc" : "black"}
+                  size={24}
+                  color={isRecording ? "#ccc" : "#0a7ea4"}
                 />
               </TouchableOpacity>
 
@@ -402,8 +460,8 @@ export default function ChatScreen() {
               >
                 <Ionicons
                   name="camera-outline"
-                  size={26}
-                  color={isRecording ? "#ccc" : "black"}
+                  size={24}
+                  color={isRecording ? "#ccc" : "#0a7ea4"}
                 />
               </TouchableOpacity>
 
@@ -421,12 +479,12 @@ export default function ChatScreen() {
               {inputText.length > 0 ? (
                 <TouchableOpacity
                   onPress={() => sendToBackend(inputText, null, null)}
-                  style={styles.iconButton}
+                  style={styles.sendButton}
                 >
                   <Ionicons
-                    name="arrow-forward-outline"
-                    size={26}
-                    color="black"
+                    name="arrow-up"
+                    size={20}
+                    color="#fff"
                   />
                 </TouchableOpacity>
               ) : (
@@ -436,8 +494,8 @@ export default function ChatScreen() {
                 >
                   <Ionicons
                     name={isRecording ? "square" : "mic-outline"}
-                    size={26}
-                    color={isRecording ? "red" : "black"}
+                    size={24}
+                    color={isRecording ? "red" : "#0a7ea4"}
                   />
                 </TouchableOpacity>
               )}
@@ -445,6 +503,18 @@ export default function ChatScreen() {
           </View>
         </ThemedView>
       </KeyboardAvoidingView>
+      {/* Custom free-form image cropper — shown after camera/gallery pick */}
+      {cropperUri && (
+        <ImageCropper
+          visible={!!cropperUri}
+          imageUri={cropperUri}
+          onCrop={(result) => {
+            setCropperUri(null);
+            sendToBackend(null, result.uri, null);
+          }}
+          onCancel={() => setCropperUri(null)}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -472,7 +542,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  headerTitle: { fontSize: 16, fontWeight: "700", color: "#333" },
+  headerTitle: { fontSize: 16, fontWeight: "700", color: "#0a7ea4" },
   container: { flex: 1 },
   innerContainer: { flex: 1, justifyContent: "space-between" },
   chatList: { padding: 15 },
@@ -480,14 +550,14 @@ const styles = StyleSheet.create({
   standaloneImage: {
     width: 280,
     height: 200,
-    borderRadius: 20,
+    borderRadius: 16,
     marginBottom: 8,
   },
 
   // --- SHARED BUBBLE STYLES ---
   messageBubble: {
-    padding: 14,
-    borderRadius: 22,
+    padding: 12,
+    borderRadius: 18,
     maxWidth: "85%",
   },
   // USER: Sharp Bottom Right Corner
@@ -495,25 +565,28 @@ const styles = StyleSheet.create({
     backgroundColor: "#0a7ea4",
     borderBottomRightRadius: 4,
   },
-  // BOT: Sharp Bottom Left Corner
+  // BOT: White card with shadow
   botBubble: {
-    backgroundColor: "#f2f2f2",
+    backgroundColor: "#fff",
     borderBottomLeftRadius: 4,
+    borderWidth: 1,
+    borderColor: "#f0f0f0",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 1,
+    shadowOpacity: 0.07,
+    shadowRadius: 4,
+    elevation: 2,
   },
 
   userText: { color: "white", fontSize: 15, fontWeight: "500" },
-  botText: { color: "black", fontSize: 15 },
+  botText: { color: "#333", fontSize: 15 },
   emptyListContainer: { flexGrow: 1, justifyContent: "center" },
   emptyContainer: { alignItems: "center" },
   emptyText: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "700",
     textAlign: "center",
+    color: "#0a7ea4",
     opacity: 0.6,
   },
   messageTextFix: { lineHeight: 22, includeFontPadding: false },
@@ -521,20 +594,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 10,
     backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderTopColor: "#f0f0f0",
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: "#f8f9fa",
     borderWidth: 1.5,
-    borderColor: "#000",
+    borderColor: "#0a7ea4",
     borderRadius: 50,
     paddingHorizontal: 10,
     minHeight: 50,
   },
-  inputContainerRecording: { borderColor: "red" },
-  textInput: { flex: 1, fontSize: 16, color: "#000", paddingHorizontal: 10 },
+  inputContainerRecording: { borderColor: "red", backgroundColor: "#fff5f5" },
+  textInput: { flex: 1, fontSize: 15, color: "#333", paddingHorizontal: 10 },
   iconButton: { padding: 6, justifyContent: "center", alignItems: "center" },
+  sendButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#0a7ea4",
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 4,
+  },
 
   // --- TYPING INDICATOR STYLES ---
   typingContainer: {
@@ -557,5 +641,63 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: "#999",
     marginHorizontal: 3,
+  },
+
+  // --- PHOTO GUIDE CARD STYLES ---
+  guideCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    marginTop: 8,
+    maxWidth: "95%",
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  guideHeader: {
+    backgroundColor: "#0a7ea4",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    gap: 8,
+  },
+  guideHeaderText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  guideStep: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 10,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#eee",
+  },
+  guideStepIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  guideStepTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#333",
+    marginBottom: 2,
+  },
+  guideStepDesc: {
+    fontSize: 12,
+    color: "#666",
+    lineHeight: 17,
+  },
+  guideImage: {
+    width: "100%",
+    height: 200,
   },
 });
