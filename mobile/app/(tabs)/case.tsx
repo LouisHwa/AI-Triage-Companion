@@ -16,38 +16,12 @@ import { ThemedText } from "@/components/themed-text";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
-// ⚠️ CHANGE TO YOUR API URL only
-const API_BASE_URL = "http://192.168.0.160:8000";
-// const API_BASE_URL = "https://adultly-peckiest-kourtney.ngrok-free.dev";
+// Centralized services — no more hardcoded URLs or inline types
+import { getReferrals } from "@/services/apiClient";
+import { mapReferral, Referral } from "@/services/mappers";
 
 // ⚠️ CHANGE THIS WHEN BACKEND AUTH IS READY
 const MOCK_USER_ID = "BdLcWMFmHjiPghRE7EZW";
-
-// --- TYPE DEFINITIONS ---
-interface TriageData {
-  absent: string[];
-  symptoms: string[];
-  vitals: {
-    age: number;
-  };
-  recommendation: string;
-  stage: string;
-  reasoning: string;
-  red_flags: string[];
-}
-
-interface Referral {
-  id: string;
-  triageData: TriageData[];
-  validatedAt: string;
-  userID: string;
-  createdAt: string;
-  validatedNotes: string;
-  status: "APPROVED" | "PENDING" | "REJECTED";
-  validatedBy: string;
-  monitor_status: string;
-  last_check_in?: string;
-}
 
 type RootStackParamList = {
   Chat: { mode: string; referralId: string };
@@ -58,43 +32,15 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 // --- DATA SERVICE LAYER (ABSTRACTION) ---
 class ReferralService {
-  private static baseUrl = API_BASE_URL;
-  private static userId = MOCK_USER_ID;
-
-  // Easy to swap data source later - just change this method
+  // Uses centralized apiClient — no hardcoded URL needed here
   static async fetchReferrals(): Promise<Referral[]> {
     try {
-      const response = await fetch(
-        `${this.baseUrl}/user/${this.userId}/referrals`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true", // For ngrok
-          },
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      return data;
+      const data = await getReferrals(MOCK_USER_ID);
+      return data.map(mapReferral);
     } catch (error) {
       console.error("ReferralService error:", error);
       throw error;
     }
-  }
-
-  // Helper to update base URL (when switching between local/ngrok)
-  static setBaseUrl(url: string) {
-    this.baseUrl = url;
-  }
-
-  // Helper to update user ID (when auth is implemented)
-  static setUserId(userId: string) {
-    this.userId = userId;
   }
 }
 
@@ -150,7 +96,6 @@ const MonitorStatusIndicator = ({ status }: { status: string }) => {
 
 const ReferralCard = ({ item }: { item: Referral }) => {
   const [expanded, setExpanded] = useState(false);
-  const triage = item.triageData[0] || {};
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-GB", {
@@ -180,14 +125,14 @@ const ReferralCard = ({ item }: { item: Referral }) => {
           <View
             style={[
               styles.stageIndicator,
-              { backgroundColor: getStageColor(triage.stage) },
+              { backgroundColor: getStageColor(item.current_stage) },
             ]}
           >
             <Ionicons name="medical" size={20} color="#fff" />
           </View>
           <View style={styles.cardHeaderInfo}>
             <ThemedText style={styles.stageTitle}>
-              {triage.stage || "Triage Case"}
+              {item.current_stage || "Triage Case"}
             </ThemedText>
             <View style={styles.dateRow}>
               <Ionicons name="calendar-outline" size={12} color="#666" />
@@ -209,7 +154,7 @@ const ReferralCard = ({ item }: { item: Referral }) => {
           numberOfLines={expanded ? undefined : 2}
           style={styles.summaryText}
         >
-          {triage.reasoning}
+          {item.reasoning}
         </ThemedText>
       </View>
 
@@ -290,21 +235,21 @@ const ReferralCard = ({ item }: { item: Referral }) => {
               </ThemedText>
             </View>
             <ThemedText style={styles.detailText}>
-              {triage.recommendation}
+              {item.recommendation}
             </ThemedText>
           </View>
 
-          {/* Symptoms */}
-          {triage.symptoms && triage.symptoms.length > 0 && (
+          {/* Active Symptoms */}
+          {item.active_symptoms && item.active_symptoms.length > 0 && (
             <View style={styles.detailSection}>
               <View style={styles.sectionHeader}>
                 <Ionicons name="fitness-outline" size={18} color="#FF9800" />
                 <ThemedText style={styles.sectionTitle}>
-                  Symptoms ({triage.symptoms.length})
+                  Active Symptoms ({item.active_symptoms.length})
                 </ThemedText>
               </View>
               <View style={styles.tagContainer}>
-                {triage.symptoms.map((symptom: string, idx: number) => (
+                {item.active_symptoms.map((symptom: string, idx: number) => (
                   <View key={idx} style={styles.symptomTag}>
                     <ThemedText style={styles.symptomText}>
                       {symptom.replace(/_/g, " ")}
@@ -315,23 +260,23 @@ const ReferralCard = ({ item }: { item: Referral }) => {
             </View>
           )}
 
-          {/* Red Flags (if any) */}
-          {triage.red_flags && triage.red_flags.length > 0 && (
+          {/* Resolved Symptoms (if any) */}
+          {item.resolved_symptoms && item.resolved_symptoms.length > 0 && (
             <View style={styles.detailSection}>
               <View style={styles.sectionHeader}>
-                <Ionicons name="warning-outline" size={18} color="#F44336" />
-                <ThemedText style={[styles.sectionTitle, { color: "#F44336" }]}>
-                  Red Flags
+                <Ionicons name="checkmark-done-outline" size={18} color="#4CAF50" />
+                <ThemedText style={[styles.sectionTitle, { color: "#4CAF50" }]}>
+                  Resolved Symptoms
                 </ThemedText>
               </View>
               <View style={styles.tagContainer}>
-                {triage.red_flags.map((flag: string, idx: number) => (
+                {item.resolved_symptoms.map((symptom: string, idx: number) => (
                   <View
                     key={idx}
-                    style={[styles.symptomTag, styles.redFlagTag]}
+                    style={[styles.symptomTag, { backgroundColor: "#E8F5E9" }]}
                   >
-                    <ThemedText style={styles.redFlagText}>
-                      {flag.replace(/_/g, " ")}
+                    <ThemedText style={[styles.symptomText, { color: "#2E7D32" }]}>
+                      {symptom.replace(/_/g, " ")}
                     </ThemedText>
                   </View>
                 ))}
