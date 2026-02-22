@@ -199,22 +199,28 @@ def analyze_throat_condition(image_path: str, tool_context: ToolContext) -> dict
 
 def get_user_information(tool_context: ToolContext):
     """
-    Fetches the static user profile from Firestore and automatically seeds the state memory.
+    Fetches the latest user profile from Firestore (always fresh — never stale cache).
+    Merges any runtime overrides (e.g. symptom_description) set by set_patient_information on top.
     """
     userID = "BdLcWMFmHjiPghRE7EZW"
     doc = db.collection("user").document(userID).get()
     db_data = doc.to_dict() if doc.exists else {}
 
-    # Initialize state dictionary
-    user_info = tool_context.state.get("user_general_information", {})
-
-    # Map Firestore's Capitalized keys to the lowercase keys the specialist agent expects
+    # Start fresh from Firestore — always up to date
+    user_info = {}
     if "Age" in db_data: user_info["age"] = db_data["Age"]
     if "Gender" in db_data: user_info["gender"] = str(db_data["Gender"]).lower()
     if "Medical_History" in db_data: user_info["medical_history"] = db_data["Medical_History"]
     if "Name" in db_data: user_info["name"] = db_data["Name"]
 
-    # Lock it into state memory
+    # Merge in any runtime-only fields (e.g. symptom_description set during the chat)
+    # These live only in session state and are NOT in Firestore
+    existing_state = tool_context.state.get("user_general_information", {})
+    for runtime_key in ("symptom_description",):
+        if runtime_key in existing_state:
+            user_info[runtime_key] = existing_state[runtime_key]
+
+    # Write back to state
     tool_context.state["user_general_information"] = user_info
     tool_context.state["userID"] = userID
 

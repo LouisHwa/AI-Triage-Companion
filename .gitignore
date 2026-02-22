@@ -73,6 +73,8 @@ web_modules/
 # service-account-keys
 chris-service-account-key.json
 database-service-account-key.json
+database-service-account-key2.json
+backend/database-service-account-key*.json
 
 
 # parcel-bundler cache (https://parceljs.org/)

@@ -1,11 +1,13 @@
 import os
 import uuid
+import base64
+import json
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.encoders import jsonable_encoder
-from google.genai import types
+from google.genai import types, Client as GenaiClient
 from dotenv import load_dotenv
-from chatbot.agent import runner, initialize_session, USER_ID, SESSION_ID
-from chatbot.monitoring_agent import monitoring_runner, initialize_session, USER_ID, SESSION_ID
+from chatbot.agent import runner, initialize_session as initialize_triage_session, USER_ID, SESSION_ID
+from chatbot.monitoring_agent import monitoring_runner, initialize_session as initialize_monitoring_session, USER_ID, SESSION_ID
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 from typing import List, Optional
@@ -20,9 +22,10 @@ load_dotenv()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    print("🚀 Initializing session...")
-    await initialize_session()
-    print("✅ Session initialized")
+    print("🚀 Initializing sessions...")
+    await initialize_triage_session()
+    await initialize_monitoring_session()
+    print("✅ Both sessions initialized")
 
     yield
 
@@ -58,13 +61,26 @@ class LocationRequest(BaseModel):
     longitude: float
     radius_meters: int = 5000  # Default 5km search
 
+class MedicalHistoryModel(BaseModel):
+    blood_type: Optional[str] = None
+    allergies: List[str] = []
+    chronic_conditions: List[str] = []
+    current_medications: List[str] = []
+    past_surgeries: List[str] = []
+    family_history: List[str] = []
+    emergency_contact_name: Optional[str] = None
+    emergency_contact_phone: Optional[str] = None
+    document_filename: Optional[str] = None
+    document_uploaded_at: Optional[str] = None
+    document_base64: Optional[str] = None
+
 class UserUpdate(BaseModel):
     Name: str
     Email: str
     CreatedAt: str
     Gender: str
     Age: Optional[int] = None
-    Medical_History: str
+    Medical_History: Optional[MedicalHistoryModel] = None
 
 UPLOAD_DIR = "temp_uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -197,6 +213,7 @@ async def chat(
 
    
 #handle refferel ID for follow-up context
+    import re
     try:
         if referral_id:
             # We inject a system instruction to force the agent into the right context
@@ -210,7 +227,7 @@ async def chat(
             response = await process_with_agent(message, image_path=saved_image_path, active_agent=monitoring_runner)
         else:
             print("🔀 Routing to Main Triage Orchestrator")
-             # Handle Text
+            # Handle Text
             if not message:
                 if file or audio:
                     message = "Analyze the input provided."
@@ -218,12 +235,13 @@ async def chat(
                     message = ""
 
             response = await process_with_agent(message, image_path=saved_image_path, active_agent=runner)
-        
-    # Generate Response
-        return {"reply": response}
+
+        # Strip markdown formatting (**bold**, *italic*) — renders as raw asterisks in mobile app
+        if response:
+            response = re.sub(r'\*{1,2}([^*]+)\*{1,2}', r'\1', response)
+        return {"reply": response or ""}
     
     except Exception as e:
-        # Clean up on error too
         if saved_image_path and os.path.exists(saved_image_path):
             os.remove(saved_image_path)
         return {"reply": f"Error processing request: {str(e)}"}
@@ -458,30 +476,41 @@ async def submit_validation(referral_id: str, action: str = Form(...), doctor_no
 
 @app.get("/user/{user_id}/referrals")
 async def get_user_referrals(user_id: str):
-    referrals_stream = db.collection("referrals").where("userID", "==", user_id).stream()
-    results = []
+    try:
+        referrals_stream = db.collection("referrals").where("userID", "==", user_id).stream()
+        results = []
 
-    for doc in referrals_stream:
-        data = doc.to_dict()
-        data["id"] = doc.id
-        
-        # 🚨 You MUST fetch the subcollection data
-        follow_up_query = db.collection("referrals").document(doc.id).collection("follow_ups").where("event_type", "==", "INITIAL_TRIAGE").limit(1).stream()
-        
-        follow_up_data = {}
-        for t_doc in follow_up_query:
-            follow_up_data = t_doc.to_dict()
-            break 
-        
-        # Merge the subcollection data into the parent object for the frontend
-        data["reasoning"] = follow_up_data.get("reasoning", "No reasoning provided.")
-        data["recommendation"] = follow_up_data.get("recommendation", "No recommendation provided.")
-        data["resolved_symptoms"] = follow_up_data.get("resolved_symptoms", [])
-        data["active_symptoms"] = data.get("active_symptoms", [])
-        
-        results.append(data)
+        for doc in referrals_stream:
+            data = doc.to_dict()
+            data["id"] = doc.id
+            
+            # 🚨 You MUST fetch the subcollection data
+            try:
+                follow_up_query = db.collection("referrals").document(doc.id).collection("follow_ups").where("event_type", "==", "INITIAL_TRIAGE").limit(1).stream()
+                
+                follow_up_data = {}
+                for t_doc in follow_up_query:
+                    follow_up_data = t_doc.to_dict()
+                    break 
+            except Exception as sub_e:
+                print(f"⚠️ Follow-up query failed for {doc.id}: {sub_e}")
+                follow_up_data = {}
+            
+            # Merge the subcollection data into the parent object for the frontend
+            data["reasoning"] = follow_up_data.get("reasoning", "No reasoning provided.")
+            data["recommendation"] = follow_up_data.get("recommendation", "No recommendation provided.")
+            data["resolved_symptoms"] = follow_up_data.get("resolved_symptoms", [])
+            data["active_symptoms"] = data.get("active_symptoms", [])
+            
+            results.append(data)
 
-    return results
+        print(f"✅ Returning {len(results)} referrals for user {user_id}")
+        return results
+    except Exception as e:
+        print(f"❌ Referrals endpoint error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/user/{user_id}")
 async def get_user(user_id: str):
@@ -506,3 +535,113 @@ async def update_user(user_id: str, user_data: UserUpdate):
     user_ref.set(user_data.model_dump(), merge=True)
     
     return {"status": "success", "message": "Profile updated"}
+
+
+# --- MEDICAL HISTORY DOCUMENT UPLOAD + AI PARSING ---
+
+MEDICAL_HISTORY_EXTRACTION_PROMPT = """
+You are a medical document parser. Analyze this document and extract the following information.
+Return ONLY a valid JSON object (no markdown, no code blocks) with these exact keys:
+{
+  "blood_type": "string or null (e.g. 'O+', 'A-', 'B+')",
+  "allergies": ["list of allergies found, empty array if none"],
+  "chronic_conditions": ["list of chronic conditions/diseases, empty array if none"],
+  "current_medications": ["list of current medications with dosage if available, empty array if none"],
+  "past_surgeries": ["list of past surgeries with year if available, empty array if none"],
+  "family_history": ["list of family medical history items, empty array if none"]
+}
+
+IMPORTANT:
+- If a field is not found in the document, use null for strings and [] for arrays.
+- Only include information explicitly stated in the document.
+- Return ONLY the JSON, nothing else.
+"""
+
+@app.post("/user/{user_id}/medical-history")
+async def upload_medical_history(user_id: str, file: UploadFile = File(...)):
+    """Upload a medical history document → Gemini extracts structured data → saves to Firestore."""
+    
+    # 1. Verify user exists
+    user_ref = db.collection("user").document(user_id)
+    user = user_ref.get()
+    if not user.exists:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # 2. Read file
+    file_bytes = await file.read()
+    file_base64 = base64.b64encode(file_bytes).decode("utf-8")
+    
+    # Determine MIME type
+    content_type = file.content_type or "application/octet-stream"
+    print(f"📄 Received medical document: {file.filename} ({content_type}, {len(file_bytes)} bytes)")
+    
+    # 3. Send to Gemini 2.5 Pro for parsing
+    try:
+        client = GenaiClient(api_key=os.getenv("GEMINI_API_KEY"))
+        response = client.models.generate_content(
+            model="gemini-2.5-pro-preview-05-06",
+            contents=[
+                MEDICAL_HISTORY_EXTRACTION_PROMPT,
+                types.Part.from_bytes(
+                    data=file_bytes,
+                    mime_type=content_type,
+                ),
+            ],
+        )
+        
+        # Parse the JSON response from Gemini
+        raw_text = response.text.strip()
+        # Remove markdown code blocks if Gemini wraps them
+        if raw_text.startswith("```"):
+            raw_text = raw_text.split("\n", 1)[1]  # remove first line
+            raw_text = raw_text.rsplit("```", 1)[0]  # remove last ```
+            raw_text = raw_text.strip()
+        
+        extracted = json.loads(raw_text)
+        print(f"✅ Gemini extracted: {json.dumps(extracted, indent=2)}")
+        
+    except Exception as e:
+        print(f"❌ Gemini parsing failed: {e}")
+        # Still save the document even if parsing fails
+        extracted = {
+            "blood_type": None,
+            "allergies": [],
+            "chronic_conditions": [],
+            "current_medications": [],
+            "past_surgeries": [],
+            "family_history": [],
+        }
+    
+    # 4. Build the medical history object
+    from datetime import datetime
+    medical_history = {
+        "blood_type": extracted.get("blood_type"),
+        "allergies": extracted.get("allergies", []),
+        "chronic_conditions": extracted.get("chronic_conditions", []),
+        "current_medications": extracted.get("current_medications", []),
+        "past_surgeries": extracted.get("past_surgeries", []),
+        "family_history": extracted.get("family_history", []),
+        "emergency_contact_name": None,
+        "emergency_contact_phone": None,
+        "document_filename": file.filename,
+        "document_uploaded_at": datetime.utcnow().isoformat(),
+        "document_base64": file_base64,
+    }
+    
+    # Preserve existing emergency contact if set
+    existing_data = user.to_dict()
+    if isinstance(existing_data.get("Medical_History"), dict):
+        old_med = existing_data["Medical_History"]
+        medical_history["emergency_contact_name"] = old_med.get("emergency_contact_name")
+        medical_history["emergency_contact_phone"] = old_med.get("emergency_contact_phone")
+    
+    # 5. Save to Firestore
+    user_ref.set({"Medical_History": medical_history}, merge=True)
+    
+    # Return extracted data (without the base64 blob to keep response small)
+    response_data = {k: v for k, v in medical_history.items() if k != "document_base64"}
+    return {
+        "status": "success",
+        "message": "Medical history uploaded and parsed",
+        "extracted": response_data,
+    }

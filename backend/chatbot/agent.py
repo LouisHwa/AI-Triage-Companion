@@ -8,7 +8,7 @@ from .tools import analyze_throat_condition, set_patient_information, get_user_i
 from google.adk.tools import AgentTool
 from .sub_agents.sore_throat_specialist.agent import sore_throat_specialist_agent
 from .sub_agents.medical_scribe.agent import medical_scribe_agent
-from .sub_agents.monitoring_agent.agent import monitoring_agent
+
 
 load_dotenv()
 
@@ -29,7 +29,8 @@ Triage_agent = Agent(
         - Check What You Know: Review the user's initial message and any previously stored information to avoid any duplication of questions.
     
     3. **Domain Routing Tool**: 
-       - If the user describes symptoms related to "skin rashes", "hives", "sore throat", "minor cuts", "pink eye or any eye related sickness", you may respond by asking the user to take a clear photo of their [affected area] for you to observe carefully before you go any further to provide recommendations to relieve their symptoms?"
+       - If the user describes symptoms related to "skin rashes", "hives", "sore throat", "minor cuts", "pink eye or any eye related sickness", you must ask the user to take a clear photo of their affected area for visual assessment.
+       - When asking for a photo, keep your message brief and natural, then append the tag [PHOTO_GUIDE] at the very END of your message on its own line. Do NOT add any written step-by-step instructions — the app will display a visual guide automatically.
        - You must then enter the 'Vision-Based Assessment' protocol.
        
     4. Vision-Based Assessment Protocol:
@@ -66,12 +67,6 @@ runner = Runner(
     session_service=session_service
 )
 
-# new runner for monitoring agent to bypass the root agent and directly start a monitoring session. 
-monitoring_runner = Runner(
-    agent=monitoring_agent,
-    app_name=APP_NAME,
-    session_service=session_service
-)
 async def initialize_session():
     await session_service.create_session(app_name=APP_NAME,user_id=USER_ID,session_id=SESSION_ID)
 
