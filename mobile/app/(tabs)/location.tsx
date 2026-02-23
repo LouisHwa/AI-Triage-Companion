@@ -17,8 +17,8 @@ import * as Location from "expo-location";
 
 import { ThemedText } from "@/components/themed-text";
 
-// ⚠️ CHANGE TO YOUR API URL, no need to add /api/geo/nearby
-const API_BASE_URL = "https://adultly-peckiest-kourtney.ngrok-free.dev";
+// Centralized services
+import { API_BASE_URL } from "@/services/apiClient";
 
 interface MedicalFacility {
   id: string;
