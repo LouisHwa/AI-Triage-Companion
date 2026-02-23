@@ -6,15 +6,15 @@ This github repository follows a modular structure approach, '/backend' for serv
 
 ## Our Objective
 
-SDG 3: Good Health and Well-being
+SDG 3: Good Health and Well-being, 3.4.1: Non-Communicable Diseases & Well-being, 3.8.1: Universal Health Coverage
 
 ### Problem Statement
 
-Malaysia will become an ageing nation by 2030, and it is said that more than 200,000 individuals will be left in the lurch due to lack of palliative care by 2030. This means there will a be surge of individuals needed to be taken care of. However, resources are limited. Malaysia's public clinics (Klinik Kesihatan) and hospital emergency departments are heavily congested with patients seeking treatment for acute minor diseases, the volumes of this will only increases as years to come, and it consumes specialists time, physical space (wvercrowded) and medication supplies. Overcrowdedness of hospitals with majority of cold cases are very commonly happened in klang valley.
+Malaysia will become an ageing nation by 2030, and it is said that more than 200,000 individuals will be left in the lurch due to lack of palliative care by 2030. This means there will a be surge of individuals needed to be taken care of. However, resources are limited. Malaysia's public clinics (Klinik Kesihatan) and hospital emergency departments are heavily congested with patients seeking treatment for acute minor diseases, the volumes of this will only increases as years to come, and it consumes specialists time, physical space (overcrowded) and medication supplies. Overcrowdedness of hospitals with majority of cold cases are very commonly happened in klang valley.
 
 ### Solution
 
-With limited resources available in public clinics (Klinik Kesihatan) and hospital emergency departments and to allow them to focus more on PC, we deveoloped an AI mobile application triage system that utilizes computer vision and establish clinical scoring criteria to evaluate an individual with acute minor diseases (like sore throat) to determine if a physical doctor's consultation is truly necessary. This This intelligently diverts non-urgent cases away from hospitals, reduces overcrowding, and gives public doctors the breathing room required to focus on patients who need specialized care the most.
+With limited resources available in public clinics (Klinik Kesihatan) and hospital emergency departments and to allow them to focus more on PC, we developed an AI mobile application triage system that utilizes computer vision and establish clinical scoring criteria to evaluate an individual with acute minor diseases (like sore throat) to determine if a physical doctor's consultation is truly necessary. This intelligently diverts non-urgent cases away from hospitals, reduces overcrowding, and gives public doctors the breathing room required to focus on patients who need specialized care the most.
 
 ## Technology Used
 
@@ -60,7 +60,7 @@ open cmd and
 2. cd mobile
 3. npx expo install @expo/vector-icons expo-image-picker expo-av expo-location expo-image-manipulator expo-document-picker
 4. Go chat.tsx, change line 23 to your ipv4 address
-5. npx expo start -c --tunnel
+5. npx expo start -c
 6. Download Expo Go app in your mobile installer
 7. Scan the QR with your camera (IOS) or the app (Android)
 
@@ -79,6 +79,10 @@ open cmd and
 
 As this is just a proof of concept of our idea.
 
+- Supports input (audio)
 - Tele-medicines with pharmacies
 - Collaboration with KKs and public hospitals to make consulation bookings
 - Emergency call, directs to a real doctor or nurse via phone call (agentic)
+- Integrate more agents to handle other acute minor diseases (flu, rashes, headache)
+- Implement Firebase analytics: to collect anonymous usage data to help us understand how users interact with our app.
+- Implement Firebase crashlytics: to track and report app crashes and errors. This data is essential for identifying and fixing issues to improve the app’s stability.
