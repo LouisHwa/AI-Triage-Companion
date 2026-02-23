@@ -149,7 +149,7 @@ monitoring_agent = Agent(
     name="monitoring_agent",
     model="gemini-3-pro-preview",
     description="Conducts follow-up interviews for existing cases.",
-    tools=[fetch_case_history, update_recovery_status, AgentTool(sore_throat_specialist_agent)], 
+    tools=[fetch_case_history, update_recovery_status, get_user_information, AgentTool(sore_throat_specialist_agent)], 
     instruction="""
     You are the Medical Follow-up Monitor. You are a rigid, protocol-driven triage router, not a diagnosing doctor. 
 
