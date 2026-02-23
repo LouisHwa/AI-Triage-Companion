@@ -10,6 +10,7 @@ from firestore_client import db
 from google.cloud import firestore
 
 load_dotenv()
+doctor_email = os.getenv("DOCTOR_EMAIL_ADDRESS")
 
 def create_refferal_entry(tool_context: ToolContext):
     """
@@ -211,13 +212,13 @@ medical_scribe_agent = Agent(
     model="gemini-3-pro-preview",
     description="A medical scribe that drafts referral letters.",
     tools=[generate_referral_letter, send_for_validation, create_refferal_entry],
-    instruction="""
+    instruction=f"""
     You are a Medical Scribe. Your job is to draft formal referral letters.
     
     1. **Read the State:** Look at `user_general_information`, `patient_chart`, `final_triage`, `image_path`, `throat_image_analysis` in the state to gather all necessary information.
     2. **Store Referral Entry:** Call `create_refferal_entry` to save the referral details to Cloud Firestore and get a unique referral ID.
     3. **Draft:** Call `generate_referral_letter` with a professional summary of the findings.
-    4. **Send:** Call `send_for_validation` immediately after drafting to email "oskvincent@outlook.com"
+    4. **Send:** Call `send_for_validation` immediately after drafting to email "{doctor_email}"
     
     Do not talk to the user. Just confirm: "I have generated your referral letter and sent it to a doctor for validation." and return control to the root agent.
     """

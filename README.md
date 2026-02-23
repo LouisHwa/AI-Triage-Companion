@@ -52,7 +52,7 @@ With limited resources available in public clinics (Klinik Kesihatan) and hospit
 - We uses ngrok to publicized our FastAPI server to the public.
 - change the API server via /mobile -> /services -> /apiClient.ts and replace with the ngrok public api
 
-### mobile
+### Mobile
 
 open cmd and
 
@@ -73,9 +73,12 @@ open cmd and
 - SYSTEM_EMAIL_ADDRESS=email account for the system to sent emails to doctors
 - SYSTEM_EMAIL_PASSWORD=16 letter key associated with the email address
 - PLACES_API_NEW="Google Places API (New) key"
+- DOCTOR_EMAIL_ADDRESS="an email address"
 
 ## Future Roadmap
 
+As this is just a proof of concept of our idea.
+
 - Tele-medicines with pharmacies
-- COnsultation bookings with KKs
+- Collaboration with KKs and public hospitals to make consulation bookings
 - Emergency call, directs to a real doctor or nurse via phone call (agentic)
