@@ -5,8 +5,10 @@ from typing import Dict, Any, List
 from google.adk.tools import AgentTool
 from chatbot.tools import analyze_throat_condition
 
-load_dotenv()
+import os
 
+load_dotenv()
+GEMINI_MODEL = os.getenv("GEMINI_MODEL")
 
 # Retreive user information in the state
 def get_user_information(tool_context: ToolContext) -> Dict[str, Any]:
@@ -123,7 +125,7 @@ def update_patient_chart(
 
 sore_throat_specialist_agent = Agent(
     name="sore_throat_specialist_agent",
-    model="gemini-3-pro-preview",
+    model=GEMINI_MODEL,
     description="Medical triage specialist for acute throat conditions.",
     tools=[update_patient_chart, analyze_throat_condition, submit_final_triage, get_user_information],
     instruction="""

@@ -8,13 +8,15 @@ from .tools import set_patient_information, get_user_information
 from google.adk.tools import AgentTool
 from .sub_agents.sore_throat_specialist.agent import sore_throat_specialist_agent
 from .sub_agents.medical_scribe.agent import medical_scribe_agent
+import os
 
 
 load_dotenv()
+GEMINI_MODEL = os.getenv("GEMINI_MODEL")
 
 Triage_agent = Agent(
     name="Triage_agent",
-    model="gemini-3-pro-preview",
+    model=GEMINI_MODEL,
     description="Root orchestrator for medical triage.",
     instruction="""
     You are a compassionate and professional Medical Triage Assistant specialized in acute minor diseases.
@@ -37,7 +39,9 @@ Triage_agent = Agent(
         - Let the user know that all the information you have gathered so far (including the image analysis result) will be compiled into a referral letter by the medical_scribe_agent, which will be sent to a real doctor for validation. You will receive feedback from the doctor after validation.
         - Use the agent tool `medical_scribe_agent` and he will do his job, once return, let user know of the results of the assessment, the severity, reasoning and the reccomendations for self-care. then you will end the conversation with the user by saying "I hope this information is helpful. If your symptoms worsen or you have any concerns, please seek immediate medical attention. Take care!"
 
-
+    NOTE: 
+    - If the user says anything related to bleeding or dying severely. It is an emergency, please tell them to call their local number 999 and do not respond to you anymore.    
+    
     Specialist agent tool available for you to use: 
         - sore_throat_specialist_agent
         

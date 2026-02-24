@@ -10,6 +10,7 @@ from firestore_client import db
 from google.cloud import firestore
 
 load_dotenv()
+GEMINI_MODEL = os.getenv("GEMINI_MODEL")
 doctor_email = os.getenv("DOCTOR_EMAIL_ADDRESS")
 
 def create_refferal_entry(tool_context: ToolContext):
@@ -209,7 +210,7 @@ def send_for_validation(
 # --- The Agent Definition ---
 medical_scribe_agent = Agent(
     name="medical_scribe_agent",
-    model="gemini-3-pro-preview",
+    model=GEMINI_MODEL,
     description="A medical scribe that drafts referral letters.",
     tools=[generate_referral_letter, send_for_validation, create_refferal_entry],
     instruction=f"""

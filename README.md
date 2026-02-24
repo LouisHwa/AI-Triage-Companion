@@ -25,7 +25,7 @@ With limited resources available in public clinics (Klinik Kesihatan) and hospit
 
 ## Implementation Details & Innovation & Workflow
 
-- A multi-agentic system that first reads user's information (age, medical histories, gender), then inquires what discomfort user's experiencing, and categorizes the type of acute minor diseases to execute the appropriate procedures. For example (sore throat), the agent will first ask for a picture of user's throat and uses a trained computer vision ML model to evualuate the metrices (redness, swolleness, white spots, blisters), and ask follow-up questions (duration, onset, pain, temperature, phelgm, flu, cough) to give a conclusion of severity stage (1 self-care, 2 pharmaceutical visit, 3 emergency deparmtent) and give remedies and recommendation of medicines to ask for in pharmacies (strictly no antibiotics) respectively. The conclusion of the AI will then sent to a real doctor for validation via email with doctor's note visible to the user.
+- A multi-agentic system that first reads user's information (age, medical histories, gender), then inquires what discomfort user's experiencing, and categorizes the type of acute minor diseases to execute the appropriate procedures. For example (sore throat), the agent will first ask for a picture of user's throat and uses a trained computer vision ML model to evualuate the metrices (redness, swolleness, white spots, blisters), and ask follow-up questions (duration, onset, pain, temperature, phelgm, flu, cough) to give a conclusion of severity stage (1 self-care, 2 pharmaceutical visit, 3 emergency deparmtent) and give remedies and recommendation of medicines to ask for in pharmacies (strictly no antibiotics) respectively. The conclusion of the AI will then sent to a real doctor for validation via email (doctor's portal).
 
 ### Features
 
@@ -74,15 +74,17 @@ open cmd and
 - SYSTEM_EMAIL_PASSWORD=16 letter key associated with the email address
 - PLACES_API_NEW="Google Places API (New) key"
 - DOCTOR_EMAIL_ADDRESS="an email address"
+- GEMINI_MODEL="your model"
 
 ## Future Roadmap
 
 As this is just a proof of concept of our idea.
 
-- Supports input (audio)
+- Include sign in/sign up page
 - Tele-medicines with pharmacies
 - Collaboration with KKs and public hospitals to make consulation bookings
-- Emergency response, directs to a real doctor or nurse via phone call (agentic)
+- Emergency response, sends directs to a emergency dept phone number
+- Improve cases.tsx to include history of user's recovering stages.
 - Integrate more agents to handle other acute minor diseases (flu, rashes, headache)
 - Implement Firebase analytics: to collect anonymous usage data to help us understand how users interact with our app.
 - Implement Firebase crashlytics: to track and report app crashes and errors. This data is essential for identifying and fixing issues to improve the app’s stability.

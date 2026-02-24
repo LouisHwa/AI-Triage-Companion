@@ -8,8 +8,10 @@ from .tools import analyze_throat_condition, set_patient_information, get_user_i
 from .sub_agents.sore_throat_specialist.agent import sore_throat_specialist_agent
 from google.cloud import firestore
 from firestore_client import db
+import os
 
 load_dotenv()
+GEMINI_MODEL = os.getenv("GEMINI_MODEL")
 
 def fetch_case_history(referral_id: str, tool_context: ToolContext):
     """
@@ -147,7 +149,7 @@ def update_recovery_status(monitor_status: str, patient_update: str, tool_contex
 
 monitoring_agent = Agent(
     name="monitoring_agent",
-    model="gemini-3-pro-preview",
+    model=GEMINI_MODEL,
     description="Conducts follow-up interviews for existing cases.",
     tools=[fetch_case_history, update_recovery_status, get_user_information, AgentTool(sore_throat_specialist_agent)], 
     instruction="""
