@@ -17,6 +17,7 @@ from firestore_client import db
 from google.cloud import firestore
 from fastapi.responses import HTMLResponse
 from PIL import Image
+import re
 
 load_dotenv()
 
@@ -257,7 +258,6 @@ async def chat(
 
    
 #handle refferel ID for follow-up context
-    import re
     try:
         if referral_id:
             # We inject a system instruction to force the agent into the right context

@@ -1,4 +1,4 @@
-# AI-Triage-Companion - Mobile App
+# TriMed - an AI-Triage-Companion Mobile App
 
 ## Overview
 
