@@ -16,6 +16,7 @@ from contextlib import asynccontextmanager
 from firestore_client import db 
 from google.cloud import firestore
 from fastapi.responses import HTMLResponse
+from PIL import Image
 
 load_dotenv()
 
@@ -179,6 +180,40 @@ async def process_with_agent(message, image_path=None, active_agent=runner): #le
     return agent_reply
 
 
+def validate_image_at_edge(image_path: str) -> dict:
+    """
+    Validates image content BEFORE it ever touches the agent logic.
+    Returns a dict: {"is_valid": bool, "reason": str}
+    """
+    print(f"🛡️ Edge Validation: Checking image {image_path}...")
+    try:
+        client = GenaiClient(api_key=os.getenv("GEMINI_API_KEY"))
+        img = Image.open(image_path).convert('RGB')
+        
+        validation_prompt = """
+        Analyze this image. You are a strict medical quality control gatekeeper.
+        1. Is this a picture of the inside of a human mouth or throat?
+        2. Is the image clear enough to see the back of the throat without severe motion blur or extreme darkness?
+        
+        Return ONLY a valid JSON object: 
+        {"is_valid": true/false, "reason": "If false, write a friendly 1-sentence reply to the user explaining why and asking for a clearer photo. If true, leave empty."}
+        """
+        
+        response = client.models.generate_content(
+            # can use a faster model cuz just checking for images so can save time 
+            model="gemini-3-pro-preview",
+            contents=[validation_prompt, img]
+        )
+        
+        raw_text = response.text.strip().removeprefix("```json").removesuffix("```").strip()
+        return json.loads(raw_text)
+
+    except Exception as e:
+        print(f"⚠️ Edge validation failed (API error), failing open: {e}")
+        # Fail-open: If Google's API hiccups, let the image through rather than breaking your app
+        return {"is_valid": True, "reason": ""}
+
+
 @app.post("/chat")
 async def chat(
     message: str = Form(None),
@@ -207,6 +242,15 @@ async def chat(
             f.write(image_bytes)
         
         print(f"✅ Image saved to: {saved_image_path}")
+
+        validation = validate_image_at_edge(saved_image_path)
+        if not validation.get("is_valid", False):
+            print(f"🛑 Edge Validation Failed: {validation.get('reason')}")
+            # Clean up the garbage file so your server doesn't fill up
+            os.remove(saved_image_path)
+            
+            reject_message = f"{validation.get('reason', 'This does not look like a clear photo of a throat.')}\n\n[PHOTO_GUIDE]"
+            return {"reply": reject_message}
     
     # Handle Audio (if needed later)
     # ... your audio handling code ...
