@@ -156,9 +156,22 @@ export default function LocationScreen() {
       }));
 
       // Sort by distance (closest first)
-      facilitiesWithDistance.sort(
-        (a, b) => (a.calculatedDistance || 0) - (b.calculatedDistance || 0),
-      );
+      facilitiesWithDistance.sort((a, b) => {
+        // 1. Primary Sort: Check if they are currently open
+        // We strictly check for 'true' because open_now can also be 'false' or 'null'
+        const aIsOpen = a.open_now === true;
+        const bIsOpen = b.open_now === true;
+
+        if (aIsOpen && !bIsOpen) {
+          return -1; // 'a' is open, 'b' is not, so 'a' moves up
+        }
+        if (!aIsOpen && bIsOpen) {
+          return 1; // 'b' is open, 'a' is not, so 'b' moves up
+        }
+
+        // 2. Secondary Sort: If both have the exact same open status, sort by distance
+        return (a.calculatedDistance || 0) - (b.calculatedDistance || 0);
+      });
 
       setFacilities(facilitiesWithDistance);
     } catch (error) {
