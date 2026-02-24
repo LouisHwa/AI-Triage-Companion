@@ -1,4 +1,3 @@
-import base64
 import os
 import numpy as np
 import concurrent.futures
@@ -7,8 +6,6 @@ from google.cloud import aiplatform
 from google.adk.tools import ToolContext
 from dotenv import load_dotenv
 from firestore_client import db 
-from google.cloud import firestore
-from datetime import datetime
 
 
 load_dotenv()
@@ -48,7 +45,9 @@ def fetch_user_data_background(userID):
     except Exception as e:
         print(f"⚠️ Firestore Error: {e}")
         return {}
+    
 
+# This function is used by the specialist
 def analyze_throat_condition(image_path: str, tool_context: ToolContext) -> dict:
     """
     Analyzes an image of a user's throat AND retrieves patient medical history simultaneously.
@@ -59,7 +58,6 @@ def analyze_throat_condition(image_path: str, tool_context: ToolContext) -> dict
         return {"status": "error", "message": f"Image file not found"}
     
     try:
-        # --- 1. PREP IMAGE (MATCHING LOCAL SCRIPT) ---
         img = Image.open(image_path).convert('RGB')
         
         # Resize to 224x224
@@ -67,7 +65,7 @@ def analyze_throat_condition(image_path: str, tool_context: ToolContext) -> dict
         
         # Convert to numpy array (float32)
         # ⚠️ CRITICAL FIX: We do NOT divide by 255.0 anymore.
-        # This keeps values in range [0.0, 255.0] to match your local script.
+        # This keeps values in range [0.0, 255.0]
         img_array = np.array(img_resized, dtype=np.float32)
         
         print(f"✅ Image prepared. Shape: {img_array.shape}, Range: {img_array.min()} - {img_array.max()}")
@@ -176,25 +174,6 @@ def analyze_throat_condition(image_path: str, tool_context: ToolContext) -> dict
     except Exception as e:
         print(f"❌ Fatal Error: {e}")
         return {"status": "error", "message": str(e)}
-
-# --- LEGACY FUNCTIONS ---
-# def set_patient_information(age: int, gender: str, medical_history:str , symptom_description: str, tool_context: ToolContext):
-#     # Minimal write-only function
-#     userID = "BdLcWMFmHjiPghRE7EZW"
-#     user_general_information = tool_context.state.get("user_general_information", {})
-    
-#     if age: user_general_information["age"] = age
-#     if gender: user_general_information["gender"] = gender
-#     if medical_history: user_general_information["medical_history"] = medical_history
-#     if symptom_description: user_general_information["symptom_description"] = symptom_description
-    
-#     tool_context.state["user_general_information"] = user_general_information
-#     tool_context.state["userID"] = userID
-#     return "Info updated."
-
-# def get_user_information():
-#     userID = "BdLcWMFmHjiPghRE7EZW"
-#     return db.collection("user").document(userID).get().to_dict()
 
 
 def get_user_information(tool_context: ToolContext):

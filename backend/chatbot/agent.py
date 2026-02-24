@@ -3,7 +3,7 @@ from google.adk.agents import Agent
 from dotenv import load_dotenv
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
-from .tools import analyze_throat_condition, set_patient_information, get_user_information
+from .tools import set_patient_information, get_user_information
 
 from google.adk.tools import AgentTool
 from .sub_agents.sore_throat_specialist.agent import sore_throat_specialist_agent
@@ -14,7 +14,7 @@ load_dotenv()
 
 Triage_agent = Agent(
     name="Triage_agent",
-    model="gemini-2.5-pro",
+    model="gemini-3-pro-preview",
     description="Root orchestrator for medical triage.",
     instruction="""
     You are a compassionate and professional Medical Triage Assistant specialized in acute minor diseases.
@@ -29,15 +29,7 @@ Triage_agent = Agent(
         - Check What You Know: Review the user's initial message and any previously stored information to avoid any duplication of questions.
     
     3. **Domain Routing Tool**: 
-       - If the user describes symptoms related to "skin rashes", "hives", "sore throat", "minor cuts", "pink eye or any eye related sickness", you must ask the user to take a clear photo of their affected area for visual assessment.
-       - When asking for a photo, keep your message brief and natural, then append the tag [PHOTO_GUIDE] at the very END of your message on its own line. Do NOT add any written step-by-step instructions — the app will display a visual guide automatically.
-       - You must then enter the 'Vision-Based Assessment' protocol.
-       
-    4. Vision-Based Assessment Protocol:
-        - When the user provides an image (indicated by "[System: Image saved at ...]" in the message), 
-          you MUST call the analyze_throat_condition tool with the provided image path.
-        - Use the tool's diagnosis to inform your response.
-        - After receiving the tool result, you must use to the appropriate specialist agent tool for further evaluation.
+       - If the user describes symptoms related to "skin rashes", "hives", "sore throat", "minor cuts", "pink eye or any eye related sickness", you must use to the appropriate specialist agent tool for further evaluation.
         
     5. The specialist will eventually finish and return control to you. 
     **ONLY EXECUTE THE DOCUMENT FLOW IF `final_triage` is not empty in your state memory**
@@ -50,7 +42,7 @@ Triage_agent = Agent(
         - sore_throat_specialist_agent
         
     """,
-    tools=[get_user_information, analyze_throat_condition, set_patient_information, AgentTool(sore_throat_specialist_agent), AgentTool(medical_scribe_agent)],
+    tools=[get_user_information, set_patient_information, AgentTool(sore_throat_specialist_agent), AgentTool(medical_scribe_agent)],
 )
 root_agent = Triage_agent
 

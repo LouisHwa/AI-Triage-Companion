@@ -3,44 +3,12 @@ from dotenv import load_dotenv
 from google.adk.tools import ToolContext
 from typing import Dict, Any, List
 from google.adk.tools import AgentTool
+from chatbot.tools import analyze_throat_condition
 
 load_dotenv()
 
 
-def get_throat_analysis(tool_context: ToolContext) -> Dict[str, Any]:
-    """
-    Retrieves the throat image analysis results from state memory.
-    
-    Args:
-        tool_context: Automatically injected by ADK
-        
-    Returns:
-        dict: The throat analysis predictions including bacteria, pus, redness, etc.
-    """
-    analysis = tool_context.state.get("throat_image_analysis", None)
-    
-    if analysis is None:
-        return {
-            "status": "not_found",
-            "message": "No throat analysis found. Please upload an image first."
-        }
-    
-    # Parse the prediction (adjust based on your actual format)
-    # Example: [{'bacteria_probability': [0.0257937163], ...}]
-    if isinstance(analysis, list) and len(analysis) > 0:
-        prediction = analysis[0]
-    else:
-        prediction = analysis
-    
-    return {
-        "status": "success",
-        "redness_level": prediction.get('redness_level', [0])[0],
-        "swollenness_level": prediction.get('swollenness_level', [0])[0],
-        "has_pus": prediction.get('has_pus', [0])[0],
-        "has_blister": prediction.get('has_blister', [0])[0],
-    } 
-
-
+# Retreive user information in the state
 def get_user_information(tool_context: ToolContext) -> Dict[str, Any]:
     """
     Retrieves user general information from state memory.
@@ -157,7 +125,7 @@ sore_throat_specialist_agent = Agent(
     name="sore_throat_specialist_agent",
     model="gemini-3-pro-preview",
     description="Medical triage specialist for acute throat conditions.",
-    tools=[get_throat_analysis, update_patient_chart, submit_final_triage, get_user_information],
+    tools=[update_patient_chart, analyze_throat_condition, submit_final_triage, get_user_information],
     instruction="""
     You are a Nurse Practitioner performing a triage assessment for a sore throat.
 
@@ -184,13 +152,18 @@ sore_throat_specialist_agent = Agent(
 
     1. Retrieve the patient's general information using 'get_user_information' tool to get their age, gender, medical history and a breif description of their symptoms.
     
-    2. Ask emergency Red Flags (Refer Immediately) - Stage 3 Doctor:
+    2. You must ask the user to take a clear photo of their affected area for visual assessment.
+       - When asking for a photo, keep your message brief and natural, then append the tag [PHOTO_GUIDE] at the very END of your message on its own line. Do NOT add any written step-by-step instructions — the app will display a visual guide automatically.
+       - When the user provides an image (indicated by "[System: Image saved at ...]" in the message), you MUST call the analyze_throat_condition tool with the provided image path.
+       - Use the tool's diagnosis to inform your response. 
+
+    3. Ask emergency Red Flags (Refer Immediately) - Stage 3 Doctor:
         - trouble breathing: tight, suffocating sensation, noisy breathing
         - trouble swallowing: drooling, inability to swallow own saliva
         - Severe neck stiffness: difficulty bending neck forward
 
-    3. You will assess patients based on the Modified Centor Criteria to review the bacterial probability:
-    First — Retrieve the throat image analysis using 'get_throat_analysis' tool
+    4. You will assess patients based on the Modified Centor Criteria to review the bacterial probability:
+    First — Use the result you got from `analyze_throat_condition` tool to do the following:
          - Review the bacterial probability, pus level, redness, swollenness
          - Use this visual data to inform your questions
          - If `pus_probability` = 0.7 (+1 point), and consider this Objective Evidence of Tonsillar Exudate, even if the patient denies it.
@@ -211,7 +184,7 @@ sore_throat_specialist_agent = Agent(
         - 4 or more: Very likely bacterial - Stage 3 Doctor visit for antibiotics
         - if it is not bacteria meaning 1 or less score, proceed to step 4, else skip step 4 and go to finalize. 
 
-    4. ** Severity Staging: **
+    5. ** Severity Staging: **
         - Duration: 0-5 days (stage 1), >6 days (stage 2), >15 days (stage 3)
         - Pain (rate in a scale of 1 to 10): can eat/drink normally with slight pain (1-3|stage 1), hurts to eat solids but can still take liquids (4-6|stage 2), severe pain when swallowing liquids (7-10|stage 3)
         - Phlegm color: clear/white/yellow/green(stage 1), blood-tinged/red (stage 3)

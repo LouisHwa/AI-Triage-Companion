@@ -82,7 +82,7 @@ As this is just a proof of concept of our idea.
 - Supports input (audio)
 - Tele-medicines with pharmacies
 - Collaboration with KKs and public hospitals to make consulation bookings
-- Emergency call, directs to a real doctor or nurse via phone call (agentic)
+- Emergency response, directs to a real doctor or nurse via phone call (agentic)
 - Integrate more agents to handle other acute minor diseases (flu, rashes, headache)
 - Implement Firebase analytics: to collect anonymous usage data to help us understand how users interact with our app.
 - Implement Firebase crashlytics: to track and report app crashes and errors. This data is essential for identifying and fixing issues to improve the app’s stability.
