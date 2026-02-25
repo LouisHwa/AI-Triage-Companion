@@ -163,6 +163,7 @@ export default function ChatScreen() {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isLiveCallMode, setIsLiveCallMode] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [showLiveGuidePopup, setShowLiveGuidePopup] = useState(false);
   const [activeReferralId, setActiveReferralId] = useState<string | null>(null);
   const [cropperUri, setCropperUri] = useState<string | null>(null); // raw URI waiting to be cropped
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
@@ -174,8 +175,7 @@ export default function ChatScreen() {
   // Holographic Orb Animation Values
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const opacityAnim = useRef(new Animated.Value(0.8)).current;
-  const ringScale = useRef(new Animated.Value(1)).current;
-  const ringOpacity = useRef(new Animated.Value(0)).current;
+  const popupAnim = useRef(new Animated.Value(0)).current;
 
   // Cleanup audio
   useEffect(() => {
@@ -189,101 +189,46 @@ export default function ChatScreen() {
     if (!isLiveCallMode) return;
 
     if (!isRecording && !isTranscribing && !isPlaying) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(scaleAnim, {
-            toValue: 1.05,
-            duration: 2500,
-            useNativeDriver: true,
-            easing: Easing.inOut(Easing.sin),
-          }),
-          Animated.timing(scaleAnim, {
-            toValue: 1,
-            duration: 2500,
-            useNativeDriver: true,
-            easing: Easing.inOut(Easing.sin),
-          }),
-        ]),
-      ).start();
+      Animated.timing(scaleAnim, { toValue: 1, duration: 800, useNativeDriver: true }).start();
+      Animated.timing(opacityAnim, { toValue: 0.8, duration: 300, useNativeDriver: true }).start();
     } else if (isPlaying) {
       Animated.loop(
         Animated.sequence([
-          Animated.timing(scaleAnim, {
-            toValue: 1.25,
-            duration: 400,
-            useNativeDriver: true,
-            easing: Easing.inOut(Easing.ease),
-          }),
-          Animated.timing(scaleAnim, {
-            toValue: 1.05,
-            duration: 400,
-            useNativeDriver: true,
-            easing: Easing.inOut(Easing.ease),
-          }),
-        ]),
+          Animated.timing(scaleAnim, { toValue: 1.15, duration: 350, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+          Animated.timing(scaleAnim, { toValue: 1.05, duration: 350, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+        ])
       ).start();
-
-      // Outer ring pulse
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(ringOpacity, {
-            toValue: 0.5,
-            duration: 0,
-            useNativeDriver: true,
-          }),
-          Animated.timing(ringScale, {
-            toValue: 1.8,
-            duration: 1200,
-            useNativeDriver: true,
-            easing: Easing.out(Easing.ease),
-          }),
-          Animated.timing(ringOpacity, {
-            toValue: 0,
-            duration: 200,
-            useNativeDriver: true,
-          }),
-          Animated.timing(ringScale, {
-            toValue: 1,
-            duration: 0,
-            useNativeDriver: true,
-          }),
-        ]),
-      ).start();
+      Animated.timing(opacityAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
     } else if (isRecording) {
       Animated.loop(
         Animated.sequence([
-          Animated.timing(scaleAnim, {
-            toValue: 1.15,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-          Animated.timing(scaleAnim, {
-            toValue: 1,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-        ]),
+          Animated.timing(scaleAnim, { toValue: 1.05, duration: 150, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+          Animated.timing(scaleAnim, { toValue: 0.98, duration: 150, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+        ])
       ).start();
-      Animated.timing(opacityAnim, {
+      Animated.timing(opacityAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+    } else {
+      Animated.timing(opacityAnim, { toValue: 0.8, duration: 300, useNativeDriver: true }).start();
+    }
+  }, [isRecording, isTranscribing, isPlaying, isLiveCallMode]);
+
+  // Live Guide Popup Animation Transition
+  useEffect(() => {
+    if (showLiveGuidePopup) {
+      Animated.spring(popupAnim, {
         toValue: 1,
-        duration: 300,
         useNativeDriver: true,
+        friction: 8,
+        tension: 50,
       }).start();
     } else {
-      Animated.timing(opacityAnim, {
-        toValue: 0.8,
-        duration: 300,
+      Animated.timing(popupAnim, {
+        toValue: 0,
+        duration: 200,
         useNativeDriver: true,
       }).start();
     }
-
-    return () => {
-      if (!isPlaying) {
-        ringOpacity.setValue(0);
-        ringScale.setValue(1);
-      }
-    };
-  }, [isRecording, isTranscribing, isPlaying, isLiveCallMode]);
+  }, [showLiveGuidePopup]);
 
   const route = useRoute();
   const { mode, referralId } = (route.params as any) || {}; // Get params
@@ -451,6 +396,10 @@ export default function ChatScreen() {
       };
 
       setMessages((prev) => [...prev, botMessage]);
+
+      if (isLiveCallMode && hasPhotoGuide) {
+        setShowLiveGuidePopup(true);
+      }
 
       // Auto-play the audio response if available
       if (data.audio_base64 && botMessage.audioBase64) {
@@ -793,8 +742,7 @@ export default function ChatScreen() {
                 )}
               </View>
               <ThemedText style={styles.disclaimerText}>
-                AI-Triage is an AI assistant and may make mistakes. Please
-                verify important medical information.
+                AI-Triage is an AI assistant and may make mistakes.{"\n"}Please verify important medical information.
               </ThemedText>
             </View>
           </ThemedView>
@@ -814,16 +762,6 @@ export default function ChatScreen() {
           <View style={styles.orbWrapper}>
             <Animated.View
               style={[
-                styles.orbRing,
-                {
-                  transform: [{ scale: ringScale }],
-                  opacity: ringOpacity,
-                  borderColor: isPlaying ? "#00e5ff" : "rgba(0, 229, 255, 0.3)",
-                },
-              ]}
-            />
-            <Animated.View
-              style={[
                 styles.orbInner,
                 {
                   transform: [{ scale: scaleAnim }],
@@ -835,24 +773,7 @@ export default function ChatScreen() {
                 scaleAnim={scaleAnim}
                 opacityAnim={opacityAnim}
                 size={240}
-                colorBase={
-                  isRecording
-                    ? [0.1, 0.6, 0.3]
-                    : isLoading
-                      ? [0.5, 0.1, 0.6]
-                      : isPlaying
-                        ? [0.8, 0.4, 0.0]
-                        : [0.0, 0.6, 0.7] // Default
-                }
-                colorHighlight={
-                  isRecording
-                    ? [0.3, 0.9, 0.6]
-                    : isLoading
-                      ? [0.8, 0.2, 0.9]
-                      : isPlaying
-                        ? [1.0, 0.8, 0.2]
-                        : [0.2, 0.9, 0.8] // Default
-                }
+                colorHex={isRecording ? 0x8000ff : 0x00e5ff}
               />
             </Animated.View>
           </View>
@@ -910,10 +831,34 @@ export default function ChatScreen() {
             </TouchableOpacity>
           </View>
 
-          <ThemedText style={styles.liveDisclaimerText}>
-            AI-Triage is an AI assistant and may make mistakes. Please verify
-            important medical information.
+          <ThemedText style={[styles.liveDisclaimerText, { textAlign: "center", lineHeight: 20 }]}>
+            AI-Triage is an AI assistant and may make mistakes.{"\n"}Please verify important medical information.
           </ThemedText>
+
+          <Animated.View style={[
+            styles.liveGuidePopup,
+            {
+              opacity: popupAnim,
+              transform: [{
+                scale: popupAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.85, 1]
+                })
+              }]
+            }
+          ]} pointerEvents={showLiveGuidePopup ? "auto" : "none"}>
+            <TouchableOpacity
+              style={styles.liveGuideClose}
+              onPress={() => setShowLiveGuidePopup(false)}
+            >
+              <Ionicons name="close" size={26} color="#444" />
+            </TouchableOpacity>
+            <Image
+              source={require("../../assets/images/throat_guide.jpg")}
+              style={styles.liveGuideImage}
+              resizeMode="contain"
+            />
+          </Animated.View>
         </View>
       )}
 
@@ -1139,14 +1084,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     width: "100%",
   },
-  orbRing: {
-    position: "absolute",
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    borderWidth: 2,
-    zIndex: 1,
-  },
   orbInner: {
     width: 240,
     height: 240,
@@ -1245,5 +1182,34 @@ const styles = StyleSheet.create({
   guideImage: {
     width: "100%",
     height: 200,
+  },
+  liveGuidePopup: {
+    position: "absolute",
+    top: "12%",
+    left: "5%",
+    right: "5%",
+    backgroundColor: "rgba(255, 255, 255, 0.96)",
+    borderRadius: 20,
+    padding: 20,
+    alignItems: "center",
+    zIndex: 100,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 15,
+  },
+  liveGuideClose: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    zIndex: 101,
+    padding: 5,
+  },
+  liveGuideImage: {
+    width: "100%",
+    height: 250,
+    marginTop: 15,
+    borderRadius: 8,
   },
 });
