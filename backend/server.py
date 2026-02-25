@@ -310,7 +310,10 @@ async def chat(
         # Optional: Generate TTS Audio for the response
         audio_b64 = None
         if response and generate_audio.lower() == "true":
-            audio_b64 = generate_tts_base64(response)
+            # Strip internal UI tags so the TTS engine doesn't read them aloud
+            tts_text = response.replace("[PHOTO_GUIDE]", "").strip()
+            if tts_text:
+                audio_b64 = generate_tts_base64(tts_text)
             
         return {
             "reply": response or "",
