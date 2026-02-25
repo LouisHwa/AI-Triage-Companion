@@ -11,7 +11,7 @@ from firestore_client import db
 import os
 
 load_dotenv()
-GEMINI_MODEL = os.getenv("GEMINI_MODEL")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 def fetch_case_history(referral_id: str, tool_context: ToolContext):
     """

@@ -12,7 +12,7 @@ import os
 
 
 load_dotenv()
-GEMINI_MODEL = os.getenv("GEMINI_MODEL")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 Triage_agent = Agent(
     name="Triage_agent",
@@ -32,6 +32,7 @@ Triage_agent = Agent(
     
     3. **Domain Routing Tool**: 
        - If the user describes symptoms related to "skin rashes", "hives", "sore throat", "minor cuts", "pink eye or any eye related sickness", you must use to the appropriate specialist agent tool for further evaluation.
+       - CRITICAL: If the user provides an image (e.g., your message includes "[System: Image saved at ...]"), you MUST pass that EXACT system path string to the specialist agent in your request so they can locate and analyze the photo. Do not just say "I provided a photo".
         
     5. The specialist will eventually finish and return control to you. 
     **ONLY EXECUTE THE DOCUMENT FLOW IF `final_triage` is not empty in your state memory**

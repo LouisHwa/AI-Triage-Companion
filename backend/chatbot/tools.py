@@ -10,7 +10,7 @@ from firestore_client import db
 
 load_dotenv()
 
-os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = os.getenv('CHRIS_GOOGLE_APPLICATION_CREDENTIALS')
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = os.getenv('VERTEX_AI_GOOGLE_APPLICATION_CREDENTIALS')
 
 # Initialize Vertex AI
 PROJECT_ID = "complete-axis-484719-v5"

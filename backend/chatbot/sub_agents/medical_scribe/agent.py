@@ -10,7 +10,7 @@ from firestore_client import db
 from google.cloud import firestore
 
 load_dotenv()
-GEMINI_MODEL = os.getenv("GEMINI_MODEL")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 doctor_email = os.getenv("DOCTOR_EMAIL_ADDRESS")
 
 def create_refferal_entry(tool_context: ToolContext):
