@@ -12,6 +12,7 @@ import {
   Image,
   Animated,
   StatusBar,
+  Easing,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -24,7 +25,7 @@ import { ThemedView } from "@/components/themed-view";
 import { useRoute } from "@react-navigation/native";
 
 // Centralized services
-import { API_BASE_URL } from "@/services/apiClient";
+import { API_BASE_URL, transcribeAudio } from "@/services/apiClient";
 
 // --- Typewriter Component ---
 const TypewriterText = memo(({ text, style }: { text: string; style: any }) => {
@@ -146,11 +147,77 @@ export default function ChatScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [isLiveCallMode, setIsLiveCallMode] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [activeReferralId, setActiveReferralId] = useState<string | null>(null);
   const [cropperUri, setCropperUri] = useState<string | null>(null); // raw URI waiting to be cropped
+  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
+
+  // Holographic Orb Animation Values
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const opacityAnim = useRef(new Animated.Value(0.8)).current;
+  const ringScale = useRef(new Animated.Value(1)).current;
+  const ringOpacity = useRef(new Animated.Value(0)).current;
+
+  // Cleanup audio
+  useEffect(() => {
+    return () => {
+      if (soundRef.current) soundRef.current.unloadAsync();
+    }
+  }, []);
+
+  // Live Call Idle & Speaking Animations
+  useEffect(() => {
+    if (!isLiveCallMode) return;
+
+    if (!isRecording && !isTranscribing && !isPlaying) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(scaleAnim, { toValue: 1.05, duration: 2500, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+          Animated.timing(scaleAnim, { toValue: 1, duration: 2500, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+        ])
+      ).start();
+    } else if (isPlaying) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(scaleAnim, { toValue: 1.25, duration: 400, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+          Animated.timing(scaleAnim, { toValue: 1.05, duration: 400, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+        ])
+      ).start();
+
+      // Outer ring pulse
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(ringOpacity, { toValue: 0.5, duration: 0, useNativeDriver: true }),
+          Animated.timing(ringScale, { toValue: 1.8, duration: 1200, useNativeDriver: true, easing: Easing.out(Easing.ease) }),
+          Animated.timing(ringOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+          Animated.timing(ringScale, { toValue: 1, duration: 0, useNativeDriver: true }),
+        ])
+      ).start();
+    } else if (isRecording) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(scaleAnim, { toValue: 1.15, duration: 800, useNativeDriver: true }),
+          Animated.timing(scaleAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        ])
+      ).start();
+      Animated.timing(opacityAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+    } else {
+      Animated.timing(opacityAnim, { toValue: 0.8, duration: 300, useNativeDriver: true }).start();
+    }
+
+    return () => {
+      if (!isPlaying) {
+        ringOpacity.setValue(0);
+        ringScale.setValue(1);
+      }
+    }
+  }, [isRecording, isTranscribing, isPlaying, isLiveCallMode]);
 
   const route = useRoute();
   const { mode, referralId } = (route.params as any) || {}; // Get params
@@ -161,6 +228,7 @@ export default function ChatScreen() {
 
     const formData = new FormData();
     formData.append("referral_id", id); // Send the ID
+    formData.append("generate_audio", "false"); // No voice in chat tab
     // No message needed; backend handles the trigger
 
     try {
@@ -182,6 +250,7 @@ export default function ChatScreen() {
           text: data.reply,
           sender: "bot",
           hasText: true,
+          audioBase64: null,
         },
       ]);
     } catch (e) {
@@ -227,9 +296,10 @@ export default function ChatScreen() {
     audioUri: string | null,
   ) => {
     // 1. Show User Message Immediately
+    const userMessageId = Date.now().toString();
     const userMessage = {
-      id: Date.now().toString(),
-      text: text || (audioUri ? "Audio message" : null),
+      id: userMessageId,
+      text: text || (audioUri ? "Processing audio..." : null),
       sender: "user",
       image: imageUri,
       hasText: !!(text && text.trim().length > 0) || !!audioUri,
@@ -240,9 +310,13 @@ export default function ChatScreen() {
 
     // 2. Prepare Data
     const formData = new FormData();
-    if (text) formData.append("message", text);
+    if (text && text.trim().length > 0 && text !== "null") {
+      formData.append("message", text);
+    }
     // Always include referral_id if in follow-up mode — routes to monitoring agent
     if (activeReferralId) formData.append("referral_id", activeReferralId);
+    formData.append("generate_audio", isLiveCallMode ? "true" : "false"); // True for Live Call
+
     if (imageUri)
       formData.append("file", {
         uri: imageUri,
@@ -282,6 +356,17 @@ export default function ChatScreen() {
       });
       const data = await response.json();
 
+      // If we sent audio, and the backend transcribed it, update our user message
+      if (audioUri && data.transcribed_text) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === userMessageId
+              ? { ...msg, text: data.transcribed_text }
+              : msg
+          )
+        );
+      }
+
       const rawReply =
         data.reply ||
         "Sorry, I didn't receive a valid response from the server.";
@@ -296,8 +381,19 @@ export default function ChatScreen() {
         sender: "bot",
         hasText: true,
         showPhotoGuide: hasPhotoGuide,
+        audioBase64: null,
       };
+
       setMessages((prev) => [...prev, botMessage]);
+
+      // Auto-play the audio response if available
+      if (data.audio_base64 && botMessage.audioBase64) {
+        playAudioMessage(botMessage.id, data.audio_base64);
+      } else if (data.audio_base64 && isLiveCallMode) {
+        // Play the audio globally if in Live Call Mode even without expanding a message
+        playAudioMessage(botMessage.id, data.audio_base64);
+      }
+
     } catch (error) {
       Alert.alert("Error", String(error));
     } finally {
@@ -323,27 +419,108 @@ export default function ChatScreen() {
 
   const startRecording = async () => {
     try {
+      console.log("Starting chat recording...");
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
       });
-      const { recording } = await Audio.Recording.createAsync(
+      const { recording: newRecording } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.HIGH_QUALITY,
       );
-      setRecording(recording);
+      setRecording(newRecording);
       setIsRecording(true);
+      if (isLiveCallMode && soundRef.current) {
+        await soundRef.current.unloadAsync();
+        setIsPlaying(false);
+      }
+      console.log("Chat recording started.");
     } catch (err) {
-      console.error(err);
+      console.error("Failed to start chat recording:", err);
+      Alert.alert("Recording Error", "Failed to start recording.");
     }
   };
 
   const stopRecording = async () => {
+    console.log("Chat stopRecording clicked. isRecording:", isRecording, "recording obj:", !!recording);
     setIsRecording(false);
-    if (!recording) return;
-    await recording.stopAndUnloadAsync();
-    const uri = recording.getURI();
-    setRecording(null);
-    if (uri) sendToBackend(null, null, uri);
+
+    if (!recording) {
+      console.log("Chat stopRecording: recording object is null!");
+      return;
+    }
+
+    setIsTranscribing(true); // Indicate STT processing
+
+    try {
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      setRecording(null);
+      console.log("Chat recording stopped. URI:", uri);
+
+      if (uri) {
+        if (isLiveCallMode) {
+          // Live Call Mode: Send audio directly as user message payload
+          console.log("Live Call: Sending audio direct to Chat endpoint");
+          sendToBackend(null, null, uri);
+          setIsTranscribing(false); // sendToBackend implies processing
+        } else {
+          // Standard Chat Mode: Transcribe local, then pop into text box
+          const formData = new FormData();
+          formData.append("audio", {
+            uri: uri,
+            name: "voice_message.m4a",
+            type: "audio/mp4",
+          } as any);
+
+          console.log("Sending backend transcription request...");
+          const { transcribed_text } = await transcribeAudio(formData);
+          console.log("Got back text:", transcribed_text);
+
+          if (transcribed_text) {
+            setInputText((prev) => prev ? `${prev} ${transcribed_text}` : transcribed_text);
+          } else {
+            Alert.alert("Transcription Notice", "Could not understand audio or returned blank.");
+          }
+          setIsTranscribing(false);
+        }
+      } else {
+        setIsTranscribing(false);
+      }
+    } catch (e) {
+      console.error("Transcription local error:", e);
+      Alert.alert("Transcription Error", String(e));
+      setIsTranscribing(false);
+    }
+  };
+
+  const playAudioMessage = async (messageId: string, base64Audio: string) => {
+    try {
+      if (soundRef.current) {
+        await soundRef.current.unloadAsync();
+      }
+
+      const { sound } = await Audio.Sound.createAsync({
+        uri: `data:audio/mp3;base64,${base64Audio}`
+      });
+
+      soundRef.current = sound;
+      setPlayingAudioId(messageId);
+
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          setPlayingAudioId(null);
+          setIsPlaying(false);
+          sound.unloadAsync();
+        }
+      });
+
+      setIsPlaying(true);
+      await sound.playAsync();
+    } catch (e) {
+      console.error("Failed to play audio", e);
+      setPlayingAudioId(null);
+      setIsPlaying(false);
+    }
   };
 
   const renderItem = ({ item }: { item: any }) => (
@@ -366,10 +543,28 @@ export default function ChatScreen() {
           ]}
         >
           {item.sender === "bot" ? (
-            <TypewriterText
-              text={item.text}
-              style={[styles.botText, styles.messageTextFix]}
-            />
+            <View style={{ flexDirection: "column" }}>
+              <TypewriterText
+                text={item.text}
+                style={[styles.botText, styles.messageTextFix]}
+              />
+
+              {item.audioBase64 && (
+                <TouchableOpacity
+                  style={styles.inlinePlayButton}
+                  onPress={() => playAudioMessage(item.id, item.audioBase64)}
+                >
+                  <Ionicons
+                    name={playingAudioId === item.id ? "volume-high" : "volume-medium-outline"}
+                    size={18}
+                    color="#0a7ea4"
+                  />
+                  <ThemedText style={styles.inlinePlayText}>
+                    {playingAudioId === item.id ? "Playing..." : "Play Voice"}
+                  </ThemedText>
+                </TouchableOpacity>
+              )}
+            </View>
           ) : (
             <ThemedText style={[styles.userText, styles.messageTextFix]}>
               {item.text}
@@ -390,119 +585,183 @@ export default function ChatScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
       <View style={styles.headerBar}>
-        <ThemedText style={styles.headerTitle}>AI TRIAGE</ThemedText>
-        <TouchableOpacity
-          onPress={() => {
-            setMessages([]);
-            setActiveReferralId(null); // Reset mode when clearing chat
-          }}
-          style={styles.refreshButton}
-        >
-          <Ionicons name="refresh-outline" size={22} color="#0a7ea4" />
-        </TouchableOpacity>
+        <ThemedText style={styles.headerTitle}>
+          {isLiveCallMode ? "LIVE VOICEMAIL" : "AI TRIAGE"}
+        </ThemedText>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            onPress={() => setIsLiveCallMode(!isLiveCallMode)}
+            style={styles.headerButton}
+          >
+            <Ionicons
+              name={isLiveCallMode ? "chatbubbles" : "call"}
+              size={20}
+              color={isLiveCallMode ? "#0a7ea4" : "#fff"}
+              style={isLiveCallMode ? null : styles.solidIconButton}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              setMessages([]);
+              setActiveReferralId(null); // Reset mode when clearing chat
+            }}
+            style={styles.headerButton}
+          >
+            <Ionicons name="refresh-outline" size={22} color="#0a7ea4" />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-      >
-        <ThemedView style={styles.innerContainer}>
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            renderItem={renderItem}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={[
-              styles.chatList,
-              messages.length === 0 && styles.emptyListContainer,
-            ]}
-            ListEmptyComponent={
-              <Animated.View
-                style={[styles.emptyContainer, { opacity: fadeAnim }]}
-              >
-                <ThemedText style={styles.emptyText}>
-                  How can I help you?
-                </ThemedText>
-              </Animated.View>
-            }
-            ListFooterComponent={isLoading ? <TypingIndicator /> : null}
-            onContentSizeChange={() =>
-              flatListRef.current?.scrollToEnd({ animated: true })
-            }
-          />
-
-          <View style={styles.inputWrapper}>
-            <View
-              style={[
-                styles.inputContainer,
-                isRecording && styles.inputContainerRecording,
+      {!isLiveCallMode ? (
+        <KeyboardAvoidingView
+          style={styles.container}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+        >
+          <ThemedView style={styles.innerContainer}>
+            <FlatList
+              ref={flatListRef}
+              data={messages}
+              renderItem={renderItem}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={[
+                styles.chatList,
+                messages.length === 0 && styles.emptyListContainer,
               ]}
-            >
-              {/* Gallery Button */}
-              <TouchableOpacity
-                onPress={openGallery}
-                style={styles.iconButton}
-                disabled={isRecording}
-              >
-                <Ionicons
-                  name="image-outline"
-                  size={24}
-                  color={isRecording ? "#ccc" : "#0a7ea4"}
-                />
-              </TouchableOpacity>
-
-              {/* Camera Button */}
-              <TouchableOpacity
-                onPress={openCamera}
-                style={styles.iconButton}
-                disabled={isRecording}
-              >
-                <Ionicons
-                  name="camera-outline"
-                  size={24}
-                  color={isRecording ? "#ccc" : "#0a7ea4"}
-                />
-              </TouchableOpacity>
-
-              <TextInput
-                style={styles.textInput}
-                placeholder={
-                  isRecording ? "Recording audio..." : "Ask me anything..."
-                }
-                placeholderTextColor={isRecording ? "red" : "#aaa"}
-                value={inputText}
-                onChangeText={setInputText}
-                editable={!isRecording}
-              />
-
-              {inputText.length > 0 ? (
-                <TouchableOpacity
-                  onPress={() => sendToBackend(inputText, null, null)}
-                  style={styles.sendButton}
+              ListEmptyComponent={
+                <Animated.View
+                  style={[styles.emptyContainer, { opacity: fadeAnim }]}
                 >
-                  <Ionicons
-                    name="arrow-up"
-                    size={20}
-                    color="#fff"
-                  />
-                </TouchableOpacity>
-              ) : (
+                  <ThemedText style={styles.emptyText}>
+                    How can I help you?
+                  </ThemedText>
+                </Animated.View>
+              }
+              ListFooterComponent={isLoading ? <TypingIndicator /> : null}
+              onContentSizeChange={() =>
+                flatListRef.current?.scrollToEnd({ animated: true })
+              }
+            />
+
+            <View style={styles.inputWrapper}>
+              <View
+                style={[
+                  styles.inputContainer,
+                  isRecording && styles.inputContainerRecording,
+                ]}
+              >
+                {/* Gallery Button */}
                 <TouchableOpacity
-                  onPress={isRecording ? stopRecording : startRecording}
+                  onPress={openGallery}
                   style={styles.iconButton}
+                  disabled={isRecording || isTranscribing}
                 >
                   <Ionicons
-                    name={isRecording ? "square" : "mic-outline"}
+                    name="image-outline"
                     size={24}
-                    color={isRecording ? "red" : "#0a7ea4"}
+                    color={isRecording || isTranscribing ? "#ccc" : "#0a7ea4"}
                   />
                 </TouchableOpacity>
-              )}
+
+                {/* Camera Button */}
+                <TouchableOpacity
+                  onPress={openCamera}
+                  style={styles.iconButton}
+                  disabled={isRecording || isTranscribing}
+                >
+                  <Ionicons
+                    name="camera-outline"
+                    size={24}
+                    color={isRecording || isTranscribing ? "#ccc" : "#0a7ea4"}
+                  />
+                </TouchableOpacity>
+
+                <TextInput
+                  style={styles.textInput}
+                  placeholder={
+                    isRecording
+                      ? "Recording audio..."
+                      : isTranscribing
+                        ? "Transcribing..."
+                        : "Ask me anything..."
+                  }
+                  placeholderTextColor={isRecording ? "red" : "#aaa"}
+                  value={inputText}
+                  onChangeText={setInputText}
+                  editable={!isRecording && !isTranscribing}
+                />
+
+                {inputText.length > 0 ? (
+                  <TouchableOpacity
+                    onPress={() => sendToBackend(inputText, null, null)}
+                    style={styles.sendButton}
+                    disabled={isTranscribing}
+                  >
+                    <Ionicons
+                      name="arrow-up"
+                      size={20}
+                      color="#fff"
+                    />
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    onPress={isRecording ? stopRecording : startRecording}
+                    style={styles.iconButton}
+                    disabled={isTranscribing}
+                  >
+                    <Ionicons
+                      name={isRecording ? "square" : "mic"}
+                      size={24}
+                      color={isRecording ? "red" : "#0a7ea4"}
+                    />
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
+          </ThemedView>
+        </KeyboardAvoidingView>
+      ) : (
+        <View style={styles.liveCallContainer}>
+          <ThemedText style={styles.statusText}>
+            {isRecording ? "Listening..." : isLoading ? "Thinking..." : isPlaying ? "Speaking..." : "Tap the mic to start talking."}
+          </ThemedText>
+
+          <View style={styles.orbWrapper}>
+            <Animated.View style={[styles.orbRing, { transform: [{ scale: ringScale }], opacity: ringOpacity, borderColor: isPlaying ? '#00e5ff' : 'rgba(0, 229, 255, 0.3)' }]} />
+            <Animated.View style={[
+              styles.orbInner,
+              {
+                transform: [{ scale: scaleAnim }],
+                opacity: opacityAnim,
+              }
+            ]}>
+              <Image
+                source={require("../../assets/images/teal_energy_sphere.png")}
+                style={styles.orbImage}
+              />
+            </Animated.View>
           </View>
-        </ThemedView>
-      </KeyboardAvoidingView>
+
+          <View style={styles.bottomControls}>
+            <TouchableOpacity
+              onPress={isRecording ? stopRecording : startRecording}
+              style={[styles.bigMicButton, isRecording && styles.bigMicButtonRecording]}
+              activeOpacity={0.7}
+              disabled={isLoading || isPlaying}
+            >
+              <Ionicons
+                name={isRecording ? "square" : "mic"}
+                size={36}
+                color="#fff"
+              />
+            </TouchableOpacity>
+            <ThemedText style={styles.recordSubtext}>
+              {isRecording ? "Tap to send" : ""}
+            </ThemedText>
+          </View>
+        </View>
+      )}
+
       {/* Custom free-form image cropper — shown after camera/gallery pick */}
       {cropperUri && (
         <ImageCropper
@@ -531,18 +790,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
-    position: "relative",
+    flexDirection: "row",
     paddingHorizontal: 15,
   },
-  refreshButton: {
-    position: "absolute",
-    right: 15,
-    top: Platform.OS === "android" ? (StatusBar.currentHeight || 0) + 10 : 15,
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  headerButton: {
     padding: 6,
     justifyContent: "center",
     alignItems: "center",
   },
-  headerTitle: { fontSize: 16, fontWeight: "700", color: "#0a7ea4" },
+  solidIconButton: {
+    backgroundColor: "#0a7ea4",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  headerTitle: { flex: 1, fontSize: 16, fontWeight: "700", color: "#0a7ea4", letterSpacing: 0.5 },
   container: { flex: 1 },
   innerContainer: { flex: 1, justifyContent: "space-between" },
   chatList: { padding: 15 },
@@ -642,6 +910,20 @@ const styles = StyleSheet.create({
     backgroundColor: "#999",
     marginHorizontal: 3,
   },
+  inlinePlayButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
+    gap: 6,
+  },
+  inlinePlayText: {
+    fontSize: 12,
+    color: "#0a7ea4",
+    fontWeight: "600",
+  },
 
   // --- PHOTO GUIDE CARD STYLES ---
   guideCard: {
@@ -668,6 +950,81 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 15,
     fontWeight: "700",
+  },
+  // --- LIVE CALL STYLES ---
+  liveCallContainer: {
+    flex: 1,
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 40,
+    backgroundColor: "#fff",
+  },
+  statusText: {
+    fontSize: 20,
+    fontWeight: "500",
+    color: "#555",
+    marginTop: 20,
+    letterSpacing: 0.5,
+  },
+  orbWrapper: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    width: '100%',
+  },
+  orbRing: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    borderWidth: 2,
+    zIndex: 1,
+  },
+  orbInner: {
+    width: 240,
+    height: 240,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#00e5ff",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 30,
+    elevation: 15,
+    zIndex: 2,
+  },
+  orbImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 120, // Circular mask
+    resizeMode: 'cover'
+  },
+  bottomControls: {
+    marginBottom: 10,
+    alignItems: 'center',
+    height: 100,
+  },
+  bigMicButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#0a7ea4",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#0a7ea4",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  bigMicButtonRecording: {
+    backgroundColor: "#e74c3c",
+    shadowColor: "#e74c3c",
+  },
+  recordSubtext: {
+    marginTop: 10,
+    fontSize: 13,
+    color: "#d9534f",
+    fontWeight: "600",
   },
   guideStep: {
     flexDirection: "row",

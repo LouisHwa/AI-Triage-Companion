@@ -22,10 +22,11 @@ export default function TabLayout() {
         options={{
           title: "Triage", //Name displayed
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="house.fill" color={color} />
+            <IconSymbol size={28} name="cross.case.fill" color={color} />
           ),
         }}
       />
+
       <Tabs.Screen
         name="case"
         options={{

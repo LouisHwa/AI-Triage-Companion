@@ -24,6 +24,8 @@ const MAPPING = {
   "doc.fill": "description",
   "mappin.circle.fill": "location-on",
   "person.fill": "person",
+  "cross.case.fill": "medical-services",
+  "phone.fill": "phone",
 } as IconMapping;
 
 /**
