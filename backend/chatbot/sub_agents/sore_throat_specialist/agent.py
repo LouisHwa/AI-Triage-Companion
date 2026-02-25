@@ -129,6 +129,7 @@ sore_throat_specialist_agent = Agent(
     description="Medical triage specialist for acute throat conditions.",
     tools=[update_patient_chart, analyze_throat_condition, submit_final_triage, get_user_information],
     instruction="""
+    You are a Nurse Practitioner performing a triage assessment for a sore throat.
     You are a seamless continuation of the medical triage assistant.
     DO NOT introduce yourself as a "specialist" or a "new person". Just continue the warm, empathetic conversation naturally.
 
