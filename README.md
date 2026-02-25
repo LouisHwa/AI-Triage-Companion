@@ -43,7 +43,7 @@ With limited resources available in public clinics (Klinik Kesihatan) and hospit
 1. cd backend
 2. python -m venv .venv
 3. .venv\Scripts\activate.bat
-4. pip install fastapi uvicorn google-genai python-dotenv Pillow python-multipart google-adk google-adk[extensions] google-cloud-firestore
+4. pip install fastapi uvicorn google-genai python-dotenv Pillow python-multipart google-adk google-adk[extensions] google-cloud-firestore google-cloud-texttospeech
 5. uvicorn server:app --host 0.0.0.0 --port 8000 --reload
 6. ngrok http 8000 (global cmd) and update .env
 
@@ -58,11 +58,12 @@ open cmd and
 
 1. npm install -g expo-cli (in global cmd)
 2. cd mobile
-3. npx expo install @expo/vector-icons expo-image-picker expo-av expo-location expo-image-manipulator expo-document-picker expo-gl
-4. Go chat.tsx, change line 23 to your ipv4 address
-5. npx expo start -c
-6. Download Expo Go app in your mobile installer
-7. Scan the QR with your camera (IOS) or the app (Android)
+3. npx expo install @expo/vector-icons expo-image-picker expo-av expo-location expo-image-manipulator expo-document-picker expo-gl three expo-three
+4. npm install --save-dev @types/three --legacy-peer-deps
+5. Go chat.tsx, change line 23 to your ipv4 address
+6. npx expo start -c
+7. Download Expo Go app in your mobile installer
+8. Scan the QR with your camera (IOS) or the app (Android)
 
 ### .env Structure
 
@@ -70,6 +71,7 @@ open cmd and
 - PUBLIC_API_URL="your ngrok http..."
 - VERTEX_AI_GOOGLE_APPLICATION_CREDENTIALS=path to your service account key
 - DATABASE_APPLICATION_CREDENTIALS=path to your service account key
+- SPEECH_SERVICE_CREDENTIALS=path to your dedicated speech JSON key
 - SYSTEM_EMAIL_ADDRESS=email account for the system to sent emails to doctors
 - SYSTEM_EMAIL_PASSWORD=16 letter key associated with the email address
 - PLACES_API_NEW="Google Places API (New) key"
