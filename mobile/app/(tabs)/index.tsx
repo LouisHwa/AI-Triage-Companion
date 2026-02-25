@@ -21,6 +21,7 @@ import ImageCropper from "@/components/ImageCropper";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import ShaderOrb from "@/components/ShaderOrb";
 
 import { useRoute } from "@react-navigation/native";
 
@@ -717,6 +718,9 @@ export default function ChatScreen() {
                   </TouchableOpacity>
                 )}
               </View>
+              <ThemedText style={styles.disclaimerText}>
+                AI-Triage is an AI assistant and may make mistakes. Please verify important medical information.
+              </ThemedText>
             </View>
           </ThemedView>
         </KeyboardAvoidingView>
@@ -735,30 +739,67 @@ export default function ChatScreen() {
                 opacity: opacityAnim,
               }
             ]}>
-              <Image
-                source={require("../../assets/images/teal_energy_sphere.png")}
-                style={styles.orbImage}
+              <ShaderOrb
+                scaleAnim={scaleAnim}
+                opacityAnim={opacityAnim}
+                size={240}
+                colorBase={
+                  isRecording ? [0.1, 0.6, 0.3] :
+                    isLoading ? [0.5, 0.1, 0.6] :
+                      isPlaying ? [0.8, 0.4, 0.0] :
+                        [0.0, 0.6, 0.7] // Default
+                }
+                colorHighlight={
+                  isRecording ? [0.3, 0.9, 0.6] :
+                    isLoading ? [0.8, 0.2, 0.9] :
+                      isPlaying ? [1.0, 0.8, 0.2] :
+                        [0.2, 0.9, 0.8] // Default
+                }
               />
             </Animated.View>
           </View>
 
           <View style={styles.bottomControls}>
+            {/* Gallery Button */}
             <TouchableOpacity
-              onPress={isRecording ? stopRecording : startRecording}
-              style={[styles.bigMicButton, isRecording && styles.bigMicButtonRecording]}
-              activeOpacity={0.7}
-              disabled={isLoading || isPlaying}
+              onPress={openGallery}
+              style={styles.sideMediaButton}
+              disabled={isRecording || isLoading || isPlaying}
             >
-              <Ionicons
-                name={isRecording ? "square" : "mic"}
-                size={36}
-                color="#fff"
-              />
+              <Ionicons name="image" size={24} color={isRecording || isLoading || isPlaying ? "#ccc" : "#0a7ea4"} />
             </TouchableOpacity>
-            <ThemedText style={styles.recordSubtext}>
-              {isRecording ? "Tap to send" : ""}
-            </ThemedText>
+
+            <View style={{ alignItems: 'center' }}>
+              <TouchableOpacity
+                onPress={isRecording ? stopRecording : startRecording}
+                style={[styles.bigMicButton, isRecording && styles.bigMicButtonRecording]}
+                activeOpacity={0.7}
+                disabled={isLoading || isPlaying}
+              >
+                <Ionicons
+                  name={isRecording ? "square" : "mic"}
+                  size={36}
+                  color="#fff"
+                />
+              </TouchableOpacity>
+              <ThemedText style={styles.recordSubtext}>
+                {isRecording ? "Tap to send" : ""}
+              </ThemedText>
+            </View>
+
+            {/* Camera Button */}
+            <TouchableOpacity
+              onPress={openCamera}
+              style={styles.sideMediaButton}
+              disabled={isRecording || isLoading || isPlaying}
+            >
+              <Ionicons name="camera" size={24} color={isRecording || isLoading || isPlaying ? "#ccc" : "#0a7ea4"} />
+            </TouchableOpacity>
           </View>
+
+          <ThemedText style={styles.liveDisclaimerText}>
+            AI-Triage is an AI assistant and may make mistakes. Please verify important medical information.
+          </ThemedText>
         </View>
       )}
 
@@ -864,6 +905,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderTopWidth: 1,
     borderTopColor: "#f0f0f0",
+  },
+  disclaimerText: {
+    textAlign: "center",
+    fontSize: 10,
+    color: "#999",
+    marginTop: 8,
   },
   inputContainer: {
     flexDirection: "row",
@@ -999,9 +1046,31 @@ const styles = StyleSheet.create({
     resizeMode: 'cover'
   },
   bottomControls: {
-    marginBottom: 10,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 30,
     height: 100,
+  },
+  liveDisclaimerText: {
+    textAlign: "center",
+    fontSize: 10,
+    color: "#bbb",
+    marginTop: 10,
+    paddingHorizontal: 20,
+  },
+  sideMediaButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   bigMicButton: {
     width: 80,
