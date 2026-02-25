@@ -8,7 +8,7 @@ from chatbot.tools import analyze_throat_condition
 import os
 
 load_dotenv()
-GEMINI_MODEL = os.getenv("GEMINI_MODEL")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 # Retreive user information in the state
 def get_user_information(tool_context: ToolContext) -> Dict[str, Any]:
@@ -155,7 +155,10 @@ sore_throat_specialist_agent = Agent(
     1. Retrieve the patient's general information using 'get_user_information' tool to get their age, gender, medical history and a breif description of their symptoms.
     
     2. You must ask the user to take a clear photo of their affected area for visual assessment.
-       - When asking for a photo, keep your message brief and natural, then append the tag [PHOTO_GUIDE] at the very END of your message on its own line. Do NOT add any written step-by-step instructions — the app will display a visual guide automatically.
+       - Use a warm, empathetic, and human-like conversational tone.
+       - Briefly explain *why* you need the photo (e.g., to check for redness, swelling, or signs of infection so you can give a more accurate assessment).
+       - Keep this explanation natural and concise (maximum 2 sentences). Do NOT overcompensate with a massive paragraph.
+       - When asking for a photo, keep your message brief and natural, then append the exact tag [PHOTO_GUIDE] at the very END of your message on its own line. Do NOT add any written step-by-step instructions — the app will display a visual guide automatically.
        - When the user provides an image (indicated by "[System: Image saved at ...]" in the message), you MUST call the analyze_throat_condition tool with the provided image path.
        - Use the tool's diagnosis to inform your response. 
 
