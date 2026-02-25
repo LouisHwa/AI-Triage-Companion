@@ -10,7 +10,7 @@ def generate_tts_base64(text: str) -> str:
     """
     try:
         # 1. Get auth token using Service Account JSON
-        key_path = os.path.join(os.path.dirname(__file__), "speech-service-account.json")
+        key_path = os.getenv("SPEECH_SERVICE_CREDENTIALS")
         credentials = service_account.Credentials.from_service_account_file(
             key_path,
             scopes=["https://www.googleapis.com/auth/cloud-platform"]

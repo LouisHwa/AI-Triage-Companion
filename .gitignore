@@ -75,6 +75,7 @@ chris-service-account-key.json
 database-service-account-key.json
 database-service-account-key2.json
 backend/database-service-account-key*.json
+speech-service-account.json
 
 
 # parcel-bundler cache (https://parceljs.org/)

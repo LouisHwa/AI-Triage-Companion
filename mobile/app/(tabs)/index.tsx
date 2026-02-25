@@ -59,42 +59,54 @@ TypewriterText.displayName = "TypewriterText";
 
 // --- Delayed Guide Card — appears after TypewriterText finishes ---
 // Matches the typewriter speed: 3 chars per 10ms → delay = (text.length / 3) * 10 ms
-const DelayedGuideCard = memo(({ text, styles }: { text: string; styles: any }) => {
-  const [visible, setVisible] = useState(false);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(10)).current;
+const DelayedGuideCard = memo(
+  ({ text, styles }: { text: string; styles: any }) => {
+    const [visible, setVisible] = useState(false);
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const translateY = useRef(new Animated.Value(10)).current;
 
-  useEffect(() => {
-    // Calculate how long typewriter takes, add 200ms buffer
-    const typewriterMs = Math.ceil((text.length / 3) * 10) + 200;
-    const timer = setTimeout(() => {
-      setVisible(true);
-      Animated.parallel([
-        Animated.timing(fadeAnim, { toValue: 1, duration: 350, useNativeDriver: true }),
-        Animated.timing(translateY, { toValue: 0, duration: 350, useNativeDriver: true }),
-      ]).start();
-    }, typewriterMs);
-    return () => clearTimeout(timer);
-  }, [text]);
+    useEffect(() => {
+      // Calculate how long typewriter takes, add 200ms buffer
+      const typewriterMs = Math.ceil((text.length / 3) * 10) + 200;
+      const timer = setTimeout(() => {
+        setVisible(true);
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 350,
+            useNativeDriver: true,
+          }),
+          Animated.timing(translateY, {
+            toValue: 0,
+            duration: 350,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }, typewriterMs);
+      return () => clearTimeout(timer);
+    }, [text]);
 
-  if (!visible) return null;
+    if (!visible) return null;
 
-  return (
-    <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY }] }}>
-      <View style={styles.guideCard}>
-        <View style={styles.guideHeader}>
-          <Ionicons name="camera" size={20} color="#fff" />
-          <ThemedText style={styles.guideHeaderText}>Photo Capture Guide</ThemedText>
+    return (
+      <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY }] }}>
+        <View style={styles.guideCard}>
+          <View style={styles.guideHeader}>
+            <Ionicons name="camera" size={20} color="#fff" />
+            <ThemedText style={styles.guideHeaderText}>
+              Photo Capture Guide
+            </ThemedText>
+          </View>
+          <Image
+            source={require("../../assets/images/throat_guide.jpg")}
+            style={styles.guideImage}
+            resizeMode="contain"
+          />
         </View>
-        <Image
-          source={require("../../assets/images/throat_guide.jpg")}
-          style={styles.guideImage}
-          resizeMode="contain"
-        />
-      </View>
-    </Animated.View>
-  );
-});
+      </Animated.View>
+    );
+  },
+);
 DelayedGuideCard.displayName = "DelayedGuideCard";
 
 // --- Typing Indicator (3 Bouncing Dots) ---
@@ -169,7 +181,7 @@ export default function ChatScreen() {
   useEffect(() => {
     return () => {
       if (soundRef.current) soundRef.current.unloadAsync();
-    }
+    };
   }, []);
 
   // Live Call Idle & Speaking Animations
@@ -179,37 +191,90 @@ export default function ChatScreen() {
     if (!isRecording && !isTranscribing && !isPlaying) {
       Animated.loop(
         Animated.sequence([
-          Animated.timing(scaleAnim, { toValue: 1.05, duration: 2500, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
-          Animated.timing(scaleAnim, { toValue: 1, duration: 2500, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
-        ])
+          Animated.timing(scaleAnim, {
+            toValue: 1.05,
+            duration: 2500,
+            useNativeDriver: true,
+            easing: Easing.inOut(Easing.sin),
+          }),
+          Animated.timing(scaleAnim, {
+            toValue: 1,
+            duration: 2500,
+            useNativeDriver: true,
+            easing: Easing.inOut(Easing.sin),
+          }),
+        ]),
       ).start();
     } else if (isPlaying) {
       Animated.loop(
         Animated.sequence([
-          Animated.timing(scaleAnim, { toValue: 1.25, duration: 400, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
-          Animated.timing(scaleAnim, { toValue: 1.05, duration: 400, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
-        ])
+          Animated.timing(scaleAnim, {
+            toValue: 1.25,
+            duration: 400,
+            useNativeDriver: true,
+            easing: Easing.inOut(Easing.ease),
+          }),
+          Animated.timing(scaleAnim, {
+            toValue: 1.05,
+            duration: 400,
+            useNativeDriver: true,
+            easing: Easing.inOut(Easing.ease),
+          }),
+        ]),
       ).start();
 
       // Outer ring pulse
       Animated.loop(
         Animated.sequence([
-          Animated.timing(ringOpacity, { toValue: 0.5, duration: 0, useNativeDriver: true }),
-          Animated.timing(ringScale, { toValue: 1.8, duration: 1200, useNativeDriver: true, easing: Easing.out(Easing.ease) }),
-          Animated.timing(ringOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
-          Animated.timing(ringScale, { toValue: 1, duration: 0, useNativeDriver: true }),
-        ])
+          Animated.timing(ringOpacity, {
+            toValue: 0.5,
+            duration: 0,
+            useNativeDriver: true,
+          }),
+          Animated.timing(ringScale, {
+            toValue: 1.8,
+            duration: 1200,
+            useNativeDriver: true,
+            easing: Easing.out(Easing.ease),
+          }),
+          Animated.timing(ringOpacity, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(ringScale, {
+            toValue: 1,
+            duration: 0,
+            useNativeDriver: true,
+          }),
+        ]),
       ).start();
     } else if (isRecording) {
       Animated.loop(
         Animated.sequence([
-          Animated.timing(scaleAnim, { toValue: 1.15, duration: 800, useNativeDriver: true }),
-          Animated.timing(scaleAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
-        ])
+          Animated.timing(scaleAnim, {
+            toValue: 1.15,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scaleAnim, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ]),
       ).start();
-      Animated.timing(opacityAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
     } else {
-      Animated.timing(opacityAnim, { toValue: 0.8, duration: 300, useNativeDriver: true }).start();
+      Animated.timing(opacityAnim, {
+        toValue: 0.8,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
     }
 
     return () => {
@@ -217,7 +282,7 @@ export default function ChatScreen() {
         ringOpacity.setValue(0);
         ringScale.setValue(1);
       }
-    }
+    };
   }, [isRecording, isTranscribing, isPlaying, isLiveCallMode]);
 
   const route = useRoute();
@@ -363,8 +428,8 @@ export default function ChatScreen() {
           prev.map((msg) =>
             msg.id === userMessageId
               ? { ...msg, text: data.transcribed_text }
-              : msg
-          )
+              : msg,
+          ),
         );
       }
 
@@ -394,7 +459,6 @@ export default function ChatScreen() {
         // Play the audio globally if in Live Call Mode even without expanding a message
         playAudioMessage(botMessage.id, data.audio_base64);
       }
-
     } catch (error) {
       Alert.alert("Error", String(error));
     } finally {
@@ -442,7 +506,12 @@ export default function ChatScreen() {
   };
 
   const stopRecording = async () => {
-    console.log("Chat stopRecording clicked. isRecording:", isRecording, "recording obj:", !!recording);
+    console.log(
+      "Chat stopRecording clicked. isRecording:",
+      isRecording,
+      "recording obj:",
+      !!recording,
+    );
     setIsRecording(false);
 
     if (!recording) {
@@ -478,9 +547,14 @@ export default function ChatScreen() {
           console.log("Got back text:", transcribed_text);
 
           if (transcribed_text) {
-            setInputText((prev) => prev ? `${prev} ${transcribed_text}` : transcribed_text);
+            setInputText((prev) =>
+              prev ? `${prev} ${transcribed_text}` : transcribed_text,
+            );
           } else {
-            Alert.alert("Transcription Notice", "Could not understand audio or returned blank.");
+            Alert.alert(
+              "Transcription Notice",
+              "Could not understand audio or returned blank.",
+            );
           }
           setIsTranscribing(false);
         }
@@ -501,7 +575,7 @@ export default function ChatScreen() {
       }
 
       const { sound } = await Audio.Sound.createAsync({
-        uri: `data:audio/mp3;base64,${base64Audio}`
+        uri: `data:audio/mp3;base64,${base64Audio}`,
       });
 
       soundRef.current = sound;
@@ -556,7 +630,11 @@ export default function ChatScreen() {
                   onPress={() => playAudioMessage(item.id, item.audioBase64)}
                 >
                   <Ionicons
-                    name={playingAudioId === item.id ? "volume-high" : "volume-medium-outline"}
+                    name={
+                      playingAudioId === item.id
+                        ? "volume-high"
+                        : "volume-medium-outline"
+                    }
                     size={18}
                     color="#0a7ea4"
                   />
@@ -587,7 +665,7 @@ export default function ChatScreen() {
 
       <View style={styles.headerBar}>
         <ThemedText style={styles.headerTitle}>
-          {isLiveCallMode ? "LIVE VOICEMAIL" : "AI TRIAGE"}
+          {isLiveCallMode ? "LIVE VOICEMAIL" : "TriMed"}
         </ThemedText>
         <View style={styles.headerActions}>
           <TouchableOpacity
@@ -698,11 +776,7 @@ export default function ChatScreen() {
                     style={styles.sendButton}
                     disabled={isTranscribing}
                   >
-                    <Ionicons
-                      name="arrow-up"
-                      size={20}
-                      color="#fff"
-                    />
+                    <Ionicons name="arrow-up" size={20} color="#fff" />
                   </TouchableOpacity>
                 ) : (
                   <TouchableOpacity
@@ -719,7 +793,8 @@ export default function ChatScreen() {
                 )}
               </View>
               <ThemedText style={styles.disclaimerText}>
-                AI-Triage is an AI assistant and may make mistakes. Please verify important medical information.
+                AI-Triage is an AI assistant and may make mistakes. Please
+                verify important medical information.
               </ThemedText>
             </View>
           </ThemedView>
@@ -727,33 +802,56 @@ export default function ChatScreen() {
       ) : (
         <View style={styles.liveCallContainer}>
           <ThemedText style={styles.statusText}>
-            {isRecording ? "Listening..." : isLoading ? "Thinking..." : isPlaying ? "Speaking..." : "Tap the mic to start talking."}
+            {isRecording
+              ? "Listening..."
+              : isLoading
+                ? "Thinking..."
+                : isPlaying
+                  ? "Speaking..."
+                  : "Tap the mic to start talking."}
           </ThemedText>
 
           <View style={styles.orbWrapper}>
-            <Animated.View style={[styles.orbRing, { transform: [{ scale: ringScale }], opacity: ringOpacity, borderColor: isPlaying ? '#00e5ff' : 'rgba(0, 229, 255, 0.3)' }]} />
-            <Animated.View style={[
-              styles.orbInner,
-              {
-                transform: [{ scale: scaleAnim }],
-                opacity: opacityAnim,
-              }
-            ]}>
+            <Animated.View
+              style={[
+                styles.orbRing,
+                {
+                  transform: [{ scale: ringScale }],
+                  opacity: ringOpacity,
+                  borderColor: isPlaying ? "#00e5ff" : "rgba(0, 229, 255, 0.3)",
+                },
+              ]}
+            />
+            <Animated.View
+              style={[
+                styles.orbInner,
+                {
+                  transform: [{ scale: scaleAnim }],
+                  opacity: opacityAnim,
+                },
+              ]}
+            >
               <ShaderOrb
                 scaleAnim={scaleAnim}
                 opacityAnim={opacityAnim}
                 size={240}
                 colorBase={
-                  isRecording ? [0.1, 0.6, 0.3] :
-                    isLoading ? [0.5, 0.1, 0.6] :
-                      isPlaying ? [0.8, 0.4, 0.0] :
-                        [0.0, 0.6, 0.7] // Default
+                  isRecording
+                    ? [0.1, 0.6, 0.3]
+                    : isLoading
+                      ? [0.5, 0.1, 0.6]
+                      : isPlaying
+                        ? [0.8, 0.4, 0.0]
+                        : [0.0, 0.6, 0.7] // Default
                 }
                 colorHighlight={
-                  isRecording ? [0.3, 0.9, 0.6] :
-                    isLoading ? [0.8, 0.2, 0.9] :
-                      isPlaying ? [1.0, 0.8, 0.2] :
-                        [0.2, 0.9, 0.8] // Default
+                  isRecording
+                    ? [0.3, 0.9, 0.6]
+                    : isLoading
+                      ? [0.8, 0.2, 0.9]
+                      : isPlaying
+                        ? [1.0, 0.8, 0.2]
+                        : [0.2, 0.9, 0.8] // Default
                 }
               />
             </Animated.View>
@@ -766,13 +864,22 @@ export default function ChatScreen() {
               style={styles.sideMediaButton}
               disabled={isRecording || isLoading || isPlaying}
             >
-              <Ionicons name="image" size={24} color={isRecording || isLoading || isPlaying ? "#ccc" : "#0a7ea4"} />
+              <Ionicons
+                name="image"
+                size={24}
+                color={
+                  isRecording || isLoading || isPlaying ? "#ccc" : "#0a7ea4"
+                }
+              />
             </TouchableOpacity>
 
-            <View style={{ alignItems: 'center' }}>
+            <View style={{ alignItems: "center" }}>
               <TouchableOpacity
                 onPress={isRecording ? stopRecording : startRecording}
-                style={[styles.bigMicButton, isRecording && styles.bigMicButtonRecording]}
+                style={[
+                  styles.bigMicButton,
+                  isRecording && styles.bigMicButtonRecording,
+                ]}
                 activeOpacity={0.7}
                 disabled={isLoading || isPlaying}
               >
@@ -793,12 +900,19 @@ export default function ChatScreen() {
               style={styles.sideMediaButton}
               disabled={isRecording || isLoading || isPlaying}
             >
-              <Ionicons name="camera" size={24} color={isRecording || isLoading || isPlaying ? "#ccc" : "#0a7ea4"} />
+              <Ionicons
+                name="camera"
+                size={24}
+                color={
+                  isRecording || isLoading || isPlaying ? "#ccc" : "#0a7ea4"
+                }
+              />
             </TouchableOpacity>
           </View>
 
           <ThemedText style={styles.liveDisclaimerText}>
-            AI-Triage is an AI assistant and may make mistakes. Please verify important medical information.
+            AI-Triage is an AI assistant and may make mistakes. Please verify
+            important medical information.
           </ThemedText>
         </View>
       )}
@@ -851,7 +965,13 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: "hidden",
   },
-  headerTitle: { flex: 1, fontSize: 16, fontWeight: "700", color: "#0a7ea4", letterSpacing: 0.5 },
+  headerTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#0a7ea4",
+    letterSpacing: 0.5,
+  },
   container: { flex: 1 },
   innerContainer: { flex: 1, justifyContent: "space-between" },
   chatList: { padding: 15 },
@@ -1017,10 +1137,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    width: '100%',
+    width: "100%",
   },
   orbRing: {
-    position: 'absolute',
+    position: "absolute",
     width: 220,
     height: 220,
     borderRadius: 110,
@@ -1043,12 +1163,12 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     borderRadius: 120, // Circular mask
-    resizeMode: 'cover'
+    resizeMode: "cover",
   },
   bottomControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 30,
     height: 100,
   },
@@ -1063,9 +1183,9 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#f0f0f0",
+    justifyContent: "center",
+    alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
