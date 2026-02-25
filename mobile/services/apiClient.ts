@@ -61,6 +61,21 @@ export async function sendChat(formData: FormData): Promise<any> {
     return response.json();
 }
 
+export async function transcribeAudio(formData: FormData): Promise<{ transcribed_text: string }> {
+    const url = `${API_BASE_URL}/transcribe`;
+    const response = await fetch(url, {
+        method: "POST",
+        headers: { "ngrok-skip-browser-warning": "true" },
+        body: formData,
+    });
+
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    return response.json();
+}
+
 // --- Location ---
 export function getNearbyMedical(latitude: number, longitude: number, radius_meters = 5000) {
     return request<any[]>(`/api/geo/nearby`, {
