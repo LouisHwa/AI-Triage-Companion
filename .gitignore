@@ -173,6 +173,9 @@ ios/*.xcworkspace
 .env
 .env.*
 
+# Temporary Uploads
+backend/temp_uploads/
+
 # =========================
 # Python
 # =========================
