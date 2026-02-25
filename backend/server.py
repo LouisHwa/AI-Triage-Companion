@@ -18,6 +18,8 @@ from google.cloud import firestore
 from fastapi.responses import HTMLResponse
 from PIL import Image
 import re
+from speech_helper import transcribe_audio
+from tts_helper import generate_tts_base64
 
 load_dotenv()
 
@@ -219,6 +221,7 @@ def validate_image_at_edge(image_path: str) -> dict:
 async def chat(
     message: str = Form(None),
     referral_id: str = Form(None),  # New field for follow-up context
+    generate_audio: str = Form("false"),  # Toggle for TTS
     file: UploadFile = File(None),
     audio: UploadFile = File(None)
 ):
@@ -227,12 +230,19 @@ async def chat(
         if referral_id.lower() in ["", "undefined", "null", "none"]:
             referral_id = None  # Force it to a true Python None
             
-    print(f"Received - Text: {message}, Image: {file.filename if file else 'No'}, Audio: {audio.filename if audio else 'No'}")
+    if message:
+        message = message.strip()
+        if message.lower() in ["", "undefined", "null", "none"]:
+            message = None
+
+    print(f"Received - Text: {message}, Image: {file.filename if file and file.filename else 'No'}, Audio: {audio.filename if audio and audio.filename else 'No'}")
     print(f"Referral ID: {referral_id}")  # ✅ Log referral ID for follow-up context
     saved_image_path = None
+    saved_audio_path = None
+    transcribed_text = None
 
     # Handle Image - SAVE IT TO DISK
-    if file:
+    if file and file.filename:
         file_extension = file.filename.split('.')[-1] if '.' in file.filename else 'jpg'
         unique_filename = f"{uuid.uuid4()}.{file_extension}"
         saved_image_path = os.path.join(UPLOAD_DIR, unique_filename)
@@ -253,9 +263,22 @@ async def chat(
             reject_message = f"{validation.get('reason', 'This does not look like a clear photo of a throat.')}\n\n[PHOTO_GUIDE]"
             return {"reply": reject_message}
     
-    # Handle Audio (if needed later)
-    # ... your audio handling code ...
-
+    # Handle Audio
+    if audio and audio.filename:
+        audio_extension = audio.filename.split('.')[-1] if '.' in audio.filename else 'm4a'
+        unique_audio_name = f"{uuid.uuid4()}.{audio_extension}"
+        saved_audio_path = os.path.join(UPLOAD_DIR, unique_audio_name)
+        
+        audio_bytes = await audio.read()
+        with open(saved_audio_path, "wb") as f:
+            f.write(audio_bytes)
+            
+        print(f"✅ Audio saved to: {saved_audio_path}")
+        # Process audio to text
+        transcribed_text = transcribe_audio(saved_audio_path)
+        if transcribed_text:
+            # Append it to the message or replace it
+            message = transcribed_text if not message else f"{message}\n(Voice: {transcribed_text})"
    
 #handle refferel ID for follow-up context
     try:
@@ -273,7 +296,7 @@ async def chat(
             print("🔀 Routing to Main Triage Orchestrator")
             # Handle Text
             if not message:
-                if file or audio:
+                if saved_image_path or saved_audio_path:
                     message = "Analyze the input provided."
                 else:
                     message = ""
@@ -283,13 +306,46 @@ async def chat(
         # Strip markdown formatting (**bold**, *italic*) — renders as raw asterisks in mobile app
         if response:
             response = re.sub(r'\*{1,2}([^*]+)\*{1,2}', r'\1', response)
-        return {"reply": response or ""}
+            
+        # Optional: Generate TTS Audio for the response
+        audio_b64 = None
+        if response and generate_audio.lower() == "true":
+            audio_b64 = generate_tts_base64(response)
+            
+        return {
+            "reply": response or "",
+            "audio_base64": audio_b64,
+            "transcribed_text": transcribed_text
+        }
     
     except Exception as e:
         if saved_image_path and os.path.exists(saved_image_path):
             os.remove(saved_image_path)
+        if saved_audio_path and os.path.exists(saved_audio_path):
+            os.remove(saved_audio_path)
         return {"reply": f"Error processing request: {str(e)}"}
-    
+
+@app.post("/transcribe")
+async def transcribe(audio: UploadFile = File(...)):
+    if audio:
+        audio_extension = audio.filename.split('.')[-1] if '.' in audio.filename else 'm4a'
+        unique_audio_name = f"{uuid.uuid4()}.{audio_extension}"
+        saved_audio_path = os.path.join(UPLOAD_DIR, unique_audio_name)
+        
+        try:
+            audio_bytes = await audio.read()
+            with open(saved_audio_path, "wb") as f:
+                f.write(audio_bytes)
+                
+            print(f"✅ Audio saved to: {saved_audio_path} for transcription")
+            transcribed_text = transcribe_audio(saved_audio_path)
+            return {"transcribed_text": transcribed_text or ""}
+        except Exception as e:
+            return {"error": f"Error processing audio: {str(e)}"}
+        finally:
+            if saved_audio_path and os.path.exists(saved_audio_path):
+                os.remove(saved_audio_path)
+    return {"transcribed_text": ""}
 
 GOOGLE_MAPS_API_KEY = os.getenv("PLACES_API_NEW")
 @app.post("/api/geo/nearby", response_model=List[MedicalPlace])
