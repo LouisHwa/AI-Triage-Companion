@@ -463,6 +463,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   refreshButton: {
+    position: "absolute",
+    right: 20,
+    top: Platform.OS === "android" ? (StatusBar.currentHeight || 0) + 15 : 15,
     padding: 8,
   },
   loadingContainer: {
