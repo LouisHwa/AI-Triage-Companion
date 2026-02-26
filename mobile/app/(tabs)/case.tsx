@@ -264,7 +264,11 @@ const ReferralCard = ({ item }: { item: Referral }) => {
           {item.resolved_symptoms && item.resolved_symptoms.length > 0 && (
             <View style={styles.detailSection}>
               <View style={styles.sectionHeader}>
-                <Ionicons name="checkmark-done-outline" size={18} color="#4CAF50" />
+                <Ionicons
+                  name="checkmark-done-outline"
+                  size={18}
+                  color="#4CAF50"
+                />
                 <ThemedText style={[styles.sectionTitle, { color: "#4CAF50" }]}>
                   Resolved Symptoms
                 </ThemedText>
@@ -275,7 +279,9 @@ const ReferralCard = ({ item }: { item: Referral }) => {
                     key={idx}
                     style={[styles.symptomTag, { backgroundColor: "#E8F5E9" }]}
                   >
-                    <ThemedText style={[styles.symptomText, { color: "#2E7D32" }]}>
+                    <ThemedText
+                      style={[styles.symptomText, { color: "#2E7D32" }]}
+                    >
                       {symptom.replace(/_/g, " ")}
                     </ThemedText>
                   </View>
@@ -317,7 +323,7 @@ const ReferralCard = ({ item }: { item: Referral }) => {
 
 // --- MAIN SCREEN ---
 export default function CasesScreen() {
-  const [referrals, setReferrals] = useState<Referral[]>([]);
+  const [cases, setCases] = useState<Referral[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -334,12 +340,12 @@ export default function CasesScreen() {
         (a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
-      setReferrals(sortedData);
+      setCases(sortedData);
     } catch (error) {
-      console.error("Failed to fetch referrals:", error);
+      console.error("Failed to fetch cases:", error);
       Alert.alert(
         "Connection Error",
-        "Could not load your referrals. Please check your connection and try again.",
+        "Could not load your cases. Please check your connection and try again.",
       );
     } finally {
       setLoading(false);
@@ -355,7 +361,7 @@ export default function CasesScreen() {
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <Ionicons name="folder-open-outline" size={80} color="#ccc" />
-      <ThemedText style={styles.emptyTitle}>No Referrals Yet</ThemedText>
+      <ThemedText style={styles.emptyTitle}>No cases Yet</ThemedText>
       <ThemedText style={styles.emptySubtext}>
         Your triage cases will appear here once you complete an assessment
       </ThemedText>
@@ -369,9 +375,9 @@ export default function CasesScreen() {
       {/* Header */}
       <View style={styles.headerBar}>
         <View>
-          <ThemedText style={styles.headerTitle}>My Referrals</ThemedText>
+          <ThemedText style={styles.headerTitle}>My Cases</ThemedText>
           <ThemedText style={styles.headerSubtitle}>
-            {referrals.length} {referrals.length === 1 ? "case" : "cases"}
+            {cases.length} {cases.length === 1 ? "case" : "cases"}
           </ThemedText>
         </View>
         <TouchableOpacity
@@ -397,14 +403,14 @@ export default function CasesScreen() {
         </View>
       ) : (
         <FlatList
-          data={referrals}
+          data={cases}
           renderItem={({ item }: { item: Referral }) => (
             <ReferralCard item={item} />
           )}
           keyExtractor={(item: Referral) => item.id}
           contentContainerStyle={[
             styles.listContent,
-            referrals.length === 0 && styles.emptyListContent,
+            cases.length === 0 && styles.emptyListContent,
           ]}
           showsVerticalScrollIndicator={false}
           refreshControl={

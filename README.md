@@ -21,7 +21,7 @@ With limited resources available in public clinics (Klinik Kesihatan) and hospit
 - **Frontend:** React Native
 - **Backend & Database:** FastAPI, Google Cloud Firestore
 - **AI:** Google-ADK framework, Google AI Studio, Vertex AI
-- **External Integrations:** Google Maps API, Google Places API (NEW)
+- **External Integrations:** Google Maps API, Google Places API (NEW), Google Speech-to-Text, Google Text-to-Speech
 
 ## Implementation Details & Innovation & Workflow
 
@@ -60,10 +60,9 @@ open cmd and
 2. cd mobile
 3. npx expo install @expo/vector-icons expo-image-picker expo-av expo-location expo-image-manipulator expo-document-picker expo-gl three expo-three
 4. npm install --save-dev @types/three --legacy-peer-deps
-5. Go chat.tsx, change line 23 to your ipv4 address
-6. npx expo start -c
-7. Download Expo Go app in your mobile installer
-8. Scan the QR with your camera (IOS) or the app (Android)
+5. npx expo start -c --tunnel
+6. Download Expo Go app in your mobile installer
+7. Scan the QR with your camera (IOS) or the app (Android)
 
 ### .env Structure
 
