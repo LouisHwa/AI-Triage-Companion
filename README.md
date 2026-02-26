@@ -58,7 +58,7 @@ open cmd and
 
 1. npm install -g expo-cli (in global cmd)
 2. cd mobile
-3. npx expo install @expo/vector-icons expo-image-picker expo-av expo-location expo-image-manipulator expo-document-picker expo-gl three expo-three
+3. npx expo install @expo/vector-icons expo-image-picker expo-av expo-location expo-image-manipulator expo-document-picker expo-gl three expo-three (it will show some error but just move on to step 4)
 4. npm install --save-dev @types/three --legacy-peer-deps
 5. npx expo start -c --tunnel
 6. Download Expo Go app in your mobile installer

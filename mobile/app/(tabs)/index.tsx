@@ -20,7 +20,7 @@ import { Audio } from "expo-av";
 import ImageCropper from "@/components/ImageCropper";
 
 import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
+
 import ShaderOrb from "@/components/ShaderOrb";
 
 import { useRoute } from "@react-navigation/native";
@@ -686,7 +686,7 @@ export default function ChatScreen() {
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
         >
-          <ThemedView style={styles.innerContainer}>
+          <View style={styles.innerContainer}>
             <FlatList
               ref={flatListRef}
               data={messages}
@@ -786,7 +786,7 @@ export default function ChatScreen() {
                 verify important medical information.
               </ThemedText>
             </View>
-          </ThemedView>
+          </View>
         </KeyboardAvoidingView>
       ) : (
         <View style={styles.liveCallContainer}>
