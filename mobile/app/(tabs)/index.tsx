@@ -189,26 +189,66 @@ export default function ChatScreen() {
     if (!isLiveCallMode) return;
 
     if (!isRecording && !isTranscribing && !isPlaying) {
-      Animated.timing(scaleAnim, { toValue: 1, duration: 800, useNativeDriver: true }).start();
-      Animated.timing(opacityAnim, { toValue: 0.8, duration: 300, useNativeDriver: true }).start();
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }).start();
+      Animated.timing(opacityAnim, {
+        toValue: 0.8,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
     } else if (isPlaying) {
       Animated.loop(
         Animated.sequence([
-          Animated.timing(scaleAnim, { toValue: 1.15, duration: 350, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
-          Animated.timing(scaleAnim, { toValue: 1.05, duration: 350, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
-        ])
+          Animated.timing(scaleAnim, {
+            toValue: 1.15,
+            duration: 350,
+            useNativeDriver: true,
+            easing: Easing.inOut(Easing.ease),
+          }),
+          Animated.timing(scaleAnim, {
+            toValue: 1.05,
+            duration: 350,
+            useNativeDriver: true,
+            easing: Easing.inOut(Easing.ease),
+          }),
+        ]),
       ).start();
-      Animated.timing(opacityAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
     } else if (isRecording) {
       Animated.loop(
         Animated.sequence([
-          Animated.timing(scaleAnim, { toValue: 1.05, duration: 150, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
-          Animated.timing(scaleAnim, { toValue: 0.98, duration: 150, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
-        ])
+          Animated.timing(scaleAnim, {
+            toValue: 1.05,
+            duration: 150,
+            useNativeDriver: true,
+            easing: Easing.inOut(Easing.ease),
+          }),
+          Animated.timing(scaleAnim, {
+            toValue: 0.98,
+            duration: 150,
+            useNativeDriver: true,
+            easing: Easing.inOut(Easing.ease),
+          }),
+        ]),
       ).start();
-      Animated.timing(opacityAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
     } else {
-      Animated.timing(opacityAnim, { toValue: 0.8, duration: 300, useNativeDriver: true }).start();
+      Animated.timing(opacityAnim, {
+        toValue: 0.8,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
     }
   }, [isRecording, isTranscribing, isPlaying, isLiveCallMode]);
 
@@ -742,7 +782,8 @@ export default function ChatScreen() {
                 )}
               </View>
               <ThemedText style={styles.disclaimerText}>
-                AI-Triage is an AI assistant and may make mistakes.{"\n"}Please verify important medical information.
+                TriMed is an AI assistant and may make mistakes.{"\n"}Please
+                verify important medical information.
               </ThemedText>
             </View>
           </ThemedView>
@@ -831,22 +872,33 @@ export default function ChatScreen() {
             </TouchableOpacity>
           </View>
 
-          <ThemedText style={[styles.liveDisclaimerText, { textAlign: "center", lineHeight: 20 }]}>
-            AI-Triage is an AI assistant and may make mistakes.{"\n"}Please verify important medical information.
+          <ThemedText
+            style={[
+              styles.liveDisclaimerText,
+              { textAlign: "center", lineHeight: 20 },
+            ]}
+          >
+            AI-Triage is an AI assistant and may make mistakes.{"\n"}Please
+            verify important medical information.
           </ThemedText>
 
-          <Animated.View style={[
-            styles.liveGuidePopup,
-            {
-              opacity: popupAnim,
-              transform: [{
-                scale: popupAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.85, 1]
-                })
-              }]
-            }
-          ]} pointerEvents={showLiveGuidePopup ? "auto" : "none"}>
+          <Animated.View
+            style={[
+              styles.liveGuidePopup,
+              {
+                opacity: popupAnim,
+                transform: [
+                  {
+                    scale: popupAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.85, 1],
+                    }),
+                  },
+                ],
+              },
+            ]}
+            pointerEvents={showLiveGuidePopup ? "auto" : "none"}
+          >
             <TouchableOpacity
               style={styles.liveGuideClose}
               onPress={() => setShowLiveGuidePopup(false)}
