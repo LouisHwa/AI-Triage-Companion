@@ -29,12 +29,27 @@ With limited resources available in public clinics (Klinik Kesihatan) and hospit
 
 ### Features
 
-- Computer Vision Model: Trained CV models that reads and give accurate metrics.
-- Monitoring: A follow up agents that monitors if the user is recovered or having new symptoms.
-- Location: displays the nearest pharmacies, clinics and hopsitals within the user's radius and provide them the nearest routes.
-- Doctor validation: After every conclusion is made, a document will be sent to the doctor, and able to give feedback on it.
+- **Computer Vision Diagnostics:** Analyzes throat images against clinical scoring criteria endpoints.
+
+- **Voice-Enabled Interaction:** Uses Speech-to-Text and Text-to-Speech for accessible, hands-free symptom reporting.
+
+- **Remote Doctor Validation:** Sends preliminary AI reports to healthcare professionals for seamless, asynchronous verification.
+
+- **Geospatial Routing:** Leverages Google Maps and Places APIs to direct users to the nearest appropriate clinical facility when physical care is required.
+
+- **Monitoring Follow-Up:** User Check-ins using Text or Voice interactions to track symptom progression (e.g., fever duration, throat pain) over time, ensuring early detection of complications and triggering immediate clinical escalation if the patient's condition deteriorates.
 
 ## Challanges Faced
+
+- **Clinical Scoring Overlap:** Resolving the "No Man's Land" between healthy pink tissue and mild inflammation by implementing Label Clamping and Architectural Refinement in EfficientNetB0.
+
+- **Pathological Data Scarcity:** Overcoming limited datasets for rare markers like Pus and Blisters through Structural Augmentations (RandomFlip/Zoom) to prioritize texture over color.
+
+- **Model Overfitting:** Preventing the AI from memorizing training lighting/cameras by increasing Dropout to 0.5 and unfreezing the top 30 layers of the backbone for better generalization.
+
+- **Longitudinal Data Mismatch:** Transitioning from mutable fields to a Snapshot Model using Firestore Subcollections to track patient disease progression over time.
+
+- **State Management & Scalability:** Implementing a Dual-Write Mechanism to maintain high-speed dashboard filtering while bypassing Firestore's 1MB document size limit.
 
 ## Starting up
 
@@ -76,6 +91,10 @@ open cmd and
 - PLACES_API_NEW="Google Places API (New) key"
 - DOCTOR_EMAIL_ADDRESS="an email address"
 - GEMINI_MODEL="your model"
+
+## Disclaimer & Limitations
+Our system at current stage only allows one user to use at a time after hosting the server. 
+Trimed is an AI assistant and may make mistakes. Please verify important medical information. 
 
 ## Future Roadmap
 
