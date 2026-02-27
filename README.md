@@ -82,6 +82,7 @@ open cmd and
 ### .env Structure
 
 - GEMINI_API_KEY=""
+- GEMINI_TTS_API_KEY="your gemini key for voice transcription"
 - PUBLIC_API_URL="your ngrok http..."
 - VERTEX_AI_GOOGLE_APPLICATION_CREDENTIALS=path to your service account key
 - DATABASE_APPLICATION_CREDENTIALS=path to your service account key
