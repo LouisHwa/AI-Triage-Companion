@@ -14,7 +14,7 @@ Malaysia will become an ageing nation by 2030, and it is said that more than 200
 
 ### Solution
 
-With limited resources available in public clinics (Klinik Kesihatan) and hospital emergency departments and to allow them to focus more on PC, we developed an AI mobile application triage system that utilizes computer vision and establish clinical scoring criteria to evaluate an individual with acute minor diseases (like sore throat) to determine if a physical doctor's consultation is truly necessary. This intelligently diverts non-urgent cases away from hospitals, reduces overcrowding, and gives public doctors the breathing room required to focus on patients who need specialized care the most.
+With limited resources available in public clinics (Klinik Kesihatan) and hospital emergency departments and to allow them to focus more on PC, we developed an AI mobile application triage system that utilizes computer vision and establish clinical scoring criteria to evaluate an individual with acute minor diseases (like sore throat) to determine if a physical doctor's consultation is truly necessary. This intelligently diverts non-urgent cases away from hospitals, reduces overcrowding, and gives public doctors the breathing room required to focus on patients who need specialized care the most. 
 
 ## Technology Used
 
@@ -25,7 +25,7 @@ With limited resources available in public clinics (Klinik Kesihatan) and hospit
 
 ## Implementation Details & Innovation & Workflow
 
-- A multi-agentic system that first reads user's information (age, medical histories, gender), then inquires what discomfort user's experiencing, and categorizes the type of acute minor diseases to execute the appropriate procedures. For example (sore throat), the agent will first ask for a picture of user's throat and uses a trained computer vision ML model to evualuate the metrices (redness, swolleness, white spots, blisters), and ask follow-up questions (duration, onset, pain, temperature, phelgm, flu, cough) to give a conclusion of severity stage (1 self-care, 2 pharmaceutical visit, 3 emergency deparmtent) and give remedies and recommendation of medicines to ask for in pharmacies (strictly no antibiotics) respectively. The conclusion of the AI will then sent to a real doctor for validation via email (doctor's portal).
+- A multi-agentic system that first reads user's information (age, medical histories, gender), then inquires what discomfort user's experiencing, and categorizes the type of acute minor diseases to execute the appropriate procedures. For example (sore throat), the agent will first ask for a picture of user's throat and uses a trained computer vision ML model to evualuate the metrices (redness, swolleness, white spots, blisters), and ask follow-up questions (duration, onset, pain, temperature, phelgm, flu, cough) to give a conclusion of severity stage (1 self-care, 2 pharmaceutical visit, 3 emergency deparmtent) and give remedies and recommendation of medicines to ask for in pharmacies (strictly no antibiotics) respectively. The conclusion of the AI will then sent to a real doctor for validation via email (doctor's portal). The user can follow-up their case by quering their recovering condition or worsened and the feedback will be sent to the doctor.
 
 ### Features
 
