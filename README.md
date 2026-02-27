@@ -59,7 +59,7 @@ With limited resources available in public clinics (Klinik Kesihatan) and hospit
 2. python -m venv .venv
 3. .venv\Scripts\activate.bat
 4. pip install fastapi uvicorn google-genai python-dotenv Pillow python-multipart google-adk google-adk[extensions] google-cloud-firestore google-cloud-texttospeech
-5. uvicorn server:app --host 0.0.0.0 --port 8000 --reload
+5. uvicorn server:app --host 0.0.0.0 --port 8080 --reload
 6. ngrok http 8000 (global cmd) and update .env
 
 ### API
