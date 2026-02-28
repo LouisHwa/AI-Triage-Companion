@@ -51,6 +51,20 @@ With limited resources available in public clinics (Klinik Kesihatan) and hospit
 
 - **State Management & Scalability:** Implementing a Dual-Write Mechanism to maintain high-speed dashboard filtering while bypassing Firestore's 1MB document size limit.
 
+## Prerequisites
+
+Before starting the project, ensure you have the following APIs and services enabled in your Google Cloud Console and Google AI Studio accounts:
+
+- **Google Gemini API**: For generating AI responses (via Google AI Studio).
+- **Google Cloud Vertex AI API**: For computer vision diagnostics and predictions.
+- **Google Cloud Firestore API**: For the backend NoSQL database.
+- **Google Cloud Speech-to-Text API (STT)**: For voice-enabled symptom reporting.
+- **Google Cloud Text-to-Speech API (TTS)**: For voice-enabled AI interactions.
+- **Google Places API (New)**: For finding nearby clinical facilities.
+- **Google Maps API**: For geospatial routing and displaying maps.
+
+You will need to generate appropriate API keys or Service Account Key `.json` files for these services. See the [`.env` Structure](#env-structure) section below for where to configure them.
+
 ## Starting up
 
 ### Server
