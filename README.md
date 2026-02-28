@@ -111,6 +111,25 @@ open cmd and
 Our system at current stage only allows one user to use at a time after hosting the server. 
 Trimed is an AI assistant and may make mistakes. Please verify important medical information. 
 
+## For Hackathon Judges: Testing the Computer Vision Models
+
+Please note that to conserve resources, our live Vertex AI endpoints have been spun down. However, you can still fully test our trained models! 
+
+We will provide the exported model versions. To run the image diagnostics:
+1. Import the provided model files into your own Google Cloud Platform (GCP) project.
+2. Deploy the models to your own Vertex AI endpoints.
+3. Update the `PROJECT_ID` and the four `ENDPOINT_XXXX` variables in `backend/chatbot/tools.py` to match your new deployment.
+4. Ensure your `VERTEX_AI_GOOGLE_APPLICATION_CREDENTIALS` in the `.env` file points to a Service Account Key with Vertex AI User permissions for your project.
+
+**Model Output Expectations & Metrics:**
+To ensure our multi-agent pipeline reads the outputs correctly, each endpoint will output specific keys in its JSON response based on the clinical scoring criteria:
+- **Generalist Endpoint:** Returns continuous scores (0.0 to 1.0) under keys looking like `redness_score`, `swelling_score`, and `inflammation_score`. Scores `>= 0.8` are flagged as **Severe**.
+- **Pus Endpoint:** Returns an isolation probability (e.g., `pus_probability` or `pus`). Values `>= 0.7` flag the image as positive for Pus.
+- **RedSpots Endpoint:** Returns an isolation probability (e.g., `redspot_probability` or `redspots`). Values `>= 0.7` flag positive.
+- **Blisters Endpoint:** Returns an isolation probability (e.g., `blister_probability` or `blisters`). Values `>= 0.7` flag positive.
+
+To facilitate testing the models once deployed, we have also included a zipped folder of sample throat images in the repository.
+
 ## Future Roadmap
 
 As this is just a proof of concept of our idea.
