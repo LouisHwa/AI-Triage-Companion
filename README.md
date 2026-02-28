@@ -115,7 +115,10 @@ Trimed is an AI assistant and may make mistakes. Please verify important medical
 
 Please note that to conserve resources, our live Vertex AI endpoints have been spun down. However, you can still fully test our trained models! 
 
-We will provide the exported model versions. To run the image diagnostics:
+We have provided the exported model versions for you to download exactly as they were trained:
+**[Download TriMed Vertex AI Models (.zip)](https://drive.google.com/file/d/1lL2puUaTfWhnzJIO7Tj01DYDmpP-b-Gt/view?usp=drive_link)**
+
+To run the image diagnostics:
 1. Import the provided model files into your own Google Cloud Platform (GCP) project.
 2. Deploy the models to your own Vertex AI endpoints.
 3. Update the `PROJECT_ID` and the four `ENDPOINT_XXXX` variables in `backend/chatbot/tools.py` to match your new deployment.
