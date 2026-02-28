@@ -127,9 +127,9 @@ To run the image diagnostics:
 **Model Output Expectations & Metrics:**
 To ensure our multi-agent pipeline reads the outputs correctly, each endpoint will output specific keys in its JSON response based on the clinical scoring criteria:
 - **Generalist Endpoint:** Returns continuous scores (0.0 to 1.0) under keys looking like `redness_score`, `swelling_score`, and `inflammation_score`. Scores `>= 0.8` are flagged as **Severe**.
-- **Pus Endpoint:** Returns an isolation probability (e.g., `pus_probability` or `pus`). Values `>= 0.7` flag the image as positive for Pus.
-- **RedSpots Endpoint:** Returns an isolation probability (e.g., `redspot_probability` or `redspots`). Values `>= 0.7` flag positive.
-- **Blisters Endpoint:** Returns an isolation probability (e.g., `blister_probability` or `blisters`). Values `>= 0.7` flag positive.
+- **Pus Endpoint:** Returns an isolation probability (`pus_probability`). Values `>= 0.7` flag the image as positive for Pus.
+- **RedSpots Endpoint:** Returns an isolation probability (`redspot_probability`). Values `>= 0.7` flag positive.
+- **Blisters Endpoint:** Returns an isolation probability (`blister_probability`). Values `>= 0.7` flag positive.
 
 To facilitate testing the models once deployed, we have also included a zipped folder of sample throat images in the repository.
 
