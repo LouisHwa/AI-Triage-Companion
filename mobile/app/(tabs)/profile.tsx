@@ -369,6 +369,17 @@ export default function ProfileScreen() {
       {/* Header */}
       <View style={styles.headerBar}>
         <ThemedText style={styles.headerTitle}>My Profile</ThemedText>
+        <TouchableOpacity
+          onPress={onRefresh}
+          style={styles.refreshButton}
+          disabled={loading || uploading || saving}
+        >
+          <Ionicons
+            name="reload-outline"
+            size={24}
+            color={loading || uploading || saving ? "#ccc" : "#0a7ea4"}
+          />
+        </TouchableOpacity>
       </View>
 
       {/* Upload overlay modal */}
@@ -684,6 +695,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: "#333",
+  },
+  refreshButton: {
+    position: "absolute",
+    right: 15,
+    top: Platform.OS === "android" ? (StatusBar.currentHeight || 0) + 15 : 15,
+    padding: 8,
   },
   scrollView: {
     flex: 1,

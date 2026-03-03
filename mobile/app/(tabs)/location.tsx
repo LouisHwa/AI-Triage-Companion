@@ -465,7 +465,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 15,
     top: Platform.OS === "android" ? (StatusBar.currentHeight || 0) + 15 : 15,
-    padding: 6,
+    padding: 8,
   },
   headerTitle: {
     fontSize: 18,

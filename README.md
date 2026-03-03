@@ -14,7 +14,7 @@ Malaysia will become an ageing nation by 2030, and it is said that more than 200
 
 ### Solution
 
-With limited resources available in public clinics (Klinik Kesihatan) and hospital emergency departments and to allow them to focus more on PC, we developed an AI mobile application triage system that utilizes computer vision and establish clinical scoring criteria to evaluate an individual with acute minor diseases (like sore throat) to determine if a physical doctor's consultation is truly necessary. This intelligently diverts non-urgent cases away from hospitals, reduces overcrowding, and gives public doctors the breathing room required to focus on patients who need specialized care the most.
+With limited resources available in public clinics (Klinik Kesihatan) and hospital emergency departments and to allow them to focus more on PC, we developed an AI mobile application triage system that utilizes computer vision and establish clinical scoring criteria to evaluate an individual with acute minor diseases (like sore throat) to determine if a physical doctor's consultation is truly necessary. This intelligently diverts non-urgent cases away from hospitals, reduces overcrowding, and gives public doctors the breathing room required to focus on patients who need specialized care the most. 
 
 ## Technology Used
 
@@ -25,7 +25,7 @@ With limited resources available in public clinics (Klinik Kesihatan) and hospit
 
 ## Implementation Details & Innovation & Workflow
 
-- A multi-agentic system that first reads user's information (age, medical histories, gender), then inquires what discomfort user's experiencing, and categorizes the type of acute minor diseases to execute the appropriate procedures. For example (sore throat), the agent will first ask for a picture of user's throat and uses a trained computer vision ML model to evualuate the metrices (redness, swolleness, white spots, blisters), and ask follow-up questions (duration, onset, pain, temperature, phelgm, flu, cough) to give a conclusion of severity stage (1 self-care, 2 pharmaceutical visit, 3 emergency deparmtent) and give remedies and recommendation of medicines to ask for in pharmacies (strictly no antibiotics) respectively. The conclusion of the AI will then sent to a real doctor for validation via email (doctor's portal).
+- A multi-agentic system that first reads user's information (age, medical histories, gender), then inquires what discomfort user's experiencing, and categorizes the type of acute minor diseases to execute the appropriate procedures. For example (sore throat), the agent will first ask for a picture of user's throat and uses a trained computer vision ML model to evualuate the metrices (redness, swolleness, white spots, blisters), and ask follow-up questions (duration, onset, pain, temperature, phelgm, flu, cough) to give a conclusion of severity stage (1 self-care, 2 pharmaceutical visit, 3 emergency deparmtent) and give remedies and recommendation of medicines to ask for in pharmacies (strictly no antibiotics) respectively. The conclusion of the AI will then sent to a real doctor for validation via email (doctor's portal). The user can follow-up their case by quering their recovering condition or worsened and the feedback will be sent to the doctor.
 
 ### Features
 
@@ -51,6 +51,20 @@ With limited resources available in public clinics (Klinik Kesihatan) and hospit
 
 - **State Management & Scalability:** Implementing a Dual-Write Mechanism to maintain high-speed dashboard filtering while bypassing Firestore's 1MB document size limit.
 
+## Prerequisites
+
+Before starting the project, ensure you have the following APIs and services enabled in your Google Cloud Console and Google AI Studio accounts:
+
+- **Google Gemini API**: For generating AI responses (via Google AI Studio).
+- **Google Cloud Vertex AI API**: For computer vision diagnostics and predictions.
+- **Google Cloud Firestore API**: For the backend NoSQL database.
+- **Google Cloud Speech-to-Text API (STT)**: For voice-enabled symptom reporting.
+- **Google Cloud Text-to-Speech API (TTS)**: For voice-enabled AI interactions.
+- **Google Places API (New)**: For finding nearby clinical facilities.
+- **Google Maps API**: For geospatial routing and displaying maps.
+
+You will need to generate appropriate API keys or Service Account Key `.json` files for these services. See the [`.env` Structure](#env-structure) section below for where to configure them.
+
 ## Starting up
 
 ### Server
@@ -59,8 +73,8 @@ With limited resources available in public clinics (Klinik Kesihatan) and hospit
 2. python -m venv .venv
 3. .venv\Scripts\activate.bat
 4. pip install fastapi uvicorn google-genai python-dotenv Pillow python-multipart google-adk google-adk[extensions] google-cloud-firestore google-cloud-texttospeech
-5. uvicorn server:app --host 0.0.0.0 --port 8000 --reload
-6. ngrok http 8000 (global cmd) and update .env
+5. uvicorn server:app --host 0.0.0.0 --port 8080 --reload
+6. ngrok http 8080 (global cmd) and update .env
 
 ### API
 
@@ -82,6 +96,7 @@ open cmd and
 ### .env Structure
 
 - GEMINI_API_KEY=""
+- GEMINI_TTS_API_KEY="your gemini key for voice transcription"
 - PUBLIC_API_URL="your ngrok http..."
 - VERTEX_AI_GOOGLE_APPLICATION_CREDENTIALS=path to your service account key
 - DATABASE_APPLICATION_CREDENTIALS=path to your service account key
@@ -95,6 +110,28 @@ open cmd and
 ## Disclaimer & Limitations
 Our system at current stage only allows one user to use at a time after hosting the server. 
 Trimed is an AI assistant and may make mistakes. Please verify important medical information. 
+
+## For Hackathon Judges: Testing the Computer Vision Models
+
+Please note that to conserve resources, our live Vertex AI endpoints have been spun down. However, you can still fully test our trained models! 
+
+We have provided the exported model versions for you to download exactly as they were trained:
+**[Download TriMed Vertex AI Models (.zip)](https://drive.google.com/file/d/1lL2puUaTfWhnzJIO7Tj01DYDmpP-b-Gt/view?usp=drive_link)**
+
+To run the image diagnostics:
+1. Import the provided model files into your own Google Cloud Platform (GCP) project.
+2. Deploy the models to your own Vertex AI endpoints.
+3. Update the `PROJECT_ID` and the four `ENDPOINT_XXXX` variables in `backend/chatbot/tools.py` to match your new deployment.
+4. Ensure your `VERTEX_AI_GOOGLE_APPLICATION_CREDENTIALS` in the `.env` file points to a Service Account Key with Vertex AI User permissions for your project.
+
+**Model Output Expectations & Metrics:**
+To ensure our multi-agent pipeline reads the outputs correctly, each endpoint will output specific keys in its JSON response based on the clinical scoring criteria:
+- **Generalist Endpoint:** Returns continuous scores (0.0 to 1.0) under keys looking like `redness_score`, `swelling_score`, and `inflammation_score`. Scores `>= 0.8` are flagged as **Severe**.
+- **Pus Endpoint:** Returns an isolation probability (`pus_probability`). Values `>= 0.7` flag the image as positive for Pus.
+- **RedSpots Endpoint:** Returns an isolation probability (`redspot_probability`). Values `>= 0.7` flag positive.
+- **Blisters Endpoint:** Returns an isolation probability (`blister_probability`). Values `>= 0.7` flag positive.
+
+To facilitate testing the models once deployed, we have also included a zipped folder of sample throat images in the repository.
 
 ## Future Roadmap
 

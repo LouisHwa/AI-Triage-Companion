@@ -675,7 +675,7 @@ export default function ChatScreen() {
             }}
             style={styles.headerButton}
           >
-            <Ionicons name="refresh-outline" size={22} color="#0a7ea4" />
+            <Ionicons name="reload-outline" size={24} color="#0a7ea4" />
           </TouchableOpacity>
         </View>
       </View>
@@ -931,7 +931,7 @@ export default function ChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#fff" },
+  safeArea: { flex: 1, backgroundColor: "#f8f9fa" },
   headerBar: {
     paddingTop:
       Platform.OS === "android" ? (StatusBar.currentHeight || 0) + 10 : 10,
@@ -942,8 +942,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
-    flexDirection: "row",
+    position: "relative",
     paddingHorizontal: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 3,
+    flexDirection: "row",
   },
   headerActions: {
     flexDirection: "row",
@@ -951,7 +957,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   headerButton: {
-    padding: 6,
+    padding: 8,
     justifyContent: "center",
     alignItems: "center",
   },

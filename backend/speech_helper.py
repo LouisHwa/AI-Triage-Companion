@@ -8,7 +8,7 @@ def transcribe_audio(audio_path: str) -> str:
     """
     print(f"🎙️ Sending audio to Gemini for STT: {audio_path}")
     try:
-        client = GenaiClient(api_key=os.getenv("GEMINI_API_KEY"))
+        client = GenaiClient(api_key=os.getenv("GEMINI_TTS_API_KEY"))
         
         # Read the audio file
         with open(audio_path, "rb") as f:
